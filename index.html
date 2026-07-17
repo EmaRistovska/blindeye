@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlindTouch - Interactive Accessibility Simulator</title>
+  <meta name="description" content="An interactive full-featured simulator of the BlindTouch mobile accessibility platform for visually impaired users. Test gesture navigation, Morse haptics, handwriting recognition, and voice interfaces.">
+  <link rel="stylesheet" href="style.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="workspace-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <header class="app-header">
+    <div class="logo">
+      <i class="fa-solid fa-eye-slash logo-icon"></i>
+      <h1>BlindTouch <span class="logo-badge">Prototype Simulator</span></h1>
+    </div>
+    <div class="status-indicator">
+      <span class="pulse-dot"></span> Localhost Dev Server Mode
+    </div>
+  </header>
+
+  <main class="simulator-container">
+    <!-- LEFT: Smartphone Frame -->
+    <section class="phone-column">
+      <div class="phone-wrapper">
+        <div class="phone-device" id="phoneDevice">
+          <!-- Physical details -->
+          <div class="notch"></div>
+          <div class="speaker-grill"></div>
+          <div class="volume-up button-physical"></div>
+          <div class="volume-down button-physical"></div>
+          <div class="power-button button-physical"></div>
+          
+          <!-- Screen Screen Content -->
+          <div class="phone-screen" id="phoneScreen">
+            <!-- Privacy Screen overlay (For Privacy Mode) -->
+            <div class="privacy-overlay" id="privacyOverlay">
+              <div class="privacy-info">
+                <i class="fa-solid fa-lock privacy-icon"></i>
+                <p>Privacy Mode Active</p>
+                <span>Screen dimmed for security. Listen to voice instructions or feel haptics.</span>
+              </div>
+            </div>
+
+            <!-- Welcome/Initial screen -->
+            <div class="screen-view active" id="welcomeScreen">
+              <div class="welcome-card">
+                <i class="fa-solid fa-hands-holding-child welcome-logo"></i>
+                <h2>Welcome to BlindTouch</h2>
+                <p>An accessible system for visually impaired users.</p>
+                <button class="welcome-btn primary-btn" id="startTutorialBtn">
+                  <i class="fa-solid fa-graduation-cap"></i> Start Tutorial
+                </button>
+                <button class="welcome-btn secondary-btn" id="skipTutorialBtn">
+                  Skip to Main Menu
+                </button>
+              </div>
+            </div>
+
+            <!-- Main Menu screen -->
+            <div class="screen-view" id="mainMenuScreen">
+              <div class="module-cards-container" id="menuCardsContainer">
+                <!-- Cards will be populated dynamically -->
+              </div>
+              <div class="fixed-navigation-area" id="navigationArea">
+                <div class="nav-indicator-line"></div>
+                <div class="nav-label">FIXED SWIPE NAVIGATION ZONE</div>
+              </div>
+            </div>
+
+            <!-- Messages screen -->
+            <div class="screen-view" id="messagesScreen">
+              <!-- Submodule: Thread List -->
+              <div class="sub-screen active" id="msgThreadsView">
+                <div class="module-title-bar">
+                  <i class="fa-solid fa-comment-sms"></i> Messages
+                </div>
+                <div class="module-cards-container" id="msgThreadsContainer"></div>
+              </div>
+
+              <!-- Submodule: Message Detail View -->
+              <div class="sub-screen" id="msgDetailView">
+                <div class="message-detail-header">
+                  <span id="msgDetailSender">Contact</span>
+                  <span class="msg-status-badge" id="msgDetailStatus">Unread</span>
+                </div>
+                <div class="message-detail-body">
+                  <p id="msgDetailBodyText">Loading message body...</p>
+                </div>
+                <div class="message-detail-actions">
+                  <div class="action-card" id="msgActionReadTTS">
+                    <i class="fa-solid fa-volume-high"></i> Speak Text (TTS)
+                  </div>
+                  <div class="action-card" id="msgActionReadMorse">
+                    <i class="fa-solid fa-fingerprint"></i> Read Morse Haptic
+                  </div>
+                  <div class="action-card" id="msgActionReply">
+                    <i class="fa-solid fa-reply"></i> Reply to Message
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Reply Screen -->
+              <div class="sub-screen" id="msgReplyView">
+                <div class="module-title-bar">
+                  Reply to <span id="msgReplySender">Sender</span>
+                </div>
+                <div class="reply-modes-container">
+                  <div class="reply-mode-card" id="replyModeQuick">
+                    <i class="fa-solid fa-reply-all"></i> Quick Answers
+                  </div>
+                  <div class="reply-mode-card" id="replyModeSTT">
+                    <i class="fa-solid fa-microphone"></i> Voice Input (STT)
+                  </div>
+                  <div class="reply-mode-card" id="replyModeMorse">
+                    <i class="fa-solid fa-fingerprint"></i> Morse Keyboard
+                  </div>
+                </div>
+              </div>
+
+              <!-- Subscreen: Quick Replies List -->
+              <div class="sub-screen" id="msgQuickRepliesView">
+                <div class="module-title-bar">Quick Answers</div>
+                <div class="module-cards-container" id="quickRepliesContainer">
+                  <!-- e.g. Yes, No, OK, I will call you later -->
+                </div>
+              </div>
+
+              <!-- Subscreen: Voice Input (STT) -->
+              <div class="sub-screen" id="msgSttView">
+                <div class="stt-container">
+                  <div class="stt-mic-indicator" id="sttMicRing">
+                    <i class="fa-solid fa-microphone"></i>
+                  </div>
+                  <p class="stt-instruction" id="sttStatusText">Press & Hold screen to speak...</p>
+                  <div class="stt-result-box" id="sttResultText">
+                    " Your speech will appear here "
+                  </div>
+                  <div class="stt-actions">
+                    <div class="stt-confirm-btn" id="sttConfirmBtn">Double Tap to Send</div>
+                    <div class="stt-cancel-btn" id="sttCancelBtn">Long Press to Cancel</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Subscreen: Morse Input -->
+              <div class="sub-screen" id="msgMorseInputView">
+                <div class="morse-input-container">
+                  <div class="morse-preview-box">
+                    <div class="morse-preview-symbols" id="morseSymbolsLog">. . -</div>
+                    <div class="morse-preview-text" id="morseTextResult">ABC</div>
+                  </div>
+                  <div class="morse-pad" id="morsePad">
+                    <div class="morse-pad-label">TAP FOR DOT (.)<br>HOLD FOR DASH (-)</div>
+                  </div>
+                  <p class="morse-help-hint">Swipe up when done. Long press to back.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Calls screen -->
+            <div class="screen-view" id="callsScreen">
+              <!-- Submodule: Calls Sub-Menu -->
+              <div class="sub-screen active" id="callsMenuView">
+                <div class="module-title-bar">
+                  <i class="fa-solid fa-phone"></i> Calls
+                </div>
+                <div class="module-cards-container">
+                  <div class="menu-item-card" id="callsOptContacts">
+                    <i class="fa-solid fa-address-book"></i> Contacts
+                  </div>
+                  <div class="menu-item-card" id="callsOptFavorites">
+                    <i class="fa-solid fa-star"></i> Favorites
+                  </div>
+                  <div class="menu-item-card" id="callsOptRecents">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Recent Calls
+                  </div>
+                  <div class="menu-item-card" id="callsOptDialer">
+                    <i class="fa-solid fa-pen-nib"></i> Handwriting Dialer
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Contacts List -->
+              <div class="sub-screen" id="contactsView">
+                <div class="module-title-bar">Contacts</div>
+                <div class="module-cards-container" id="contactsContainer"></div>
+              </div>
+
+              <!-- Submodule: Contact Actions -->
+              <div class="sub-screen" id="contactActionsView">
+                <div class="module-title-bar" id="actionContactName">Contact Name</div>
+                <div class="module-cards-container">
+                  <div class="action-card" id="contactActionCall">
+                    <i class="fa-solid fa-phone"></i> Call Contact
+                  </div>
+                  <div class="action-card" id="contactActionFavorite">
+                    <i class="fa-solid fa-star"></i> Toggle Favorite
+                  </div>
+                  <div class="action-card" id="contactActionEmergency">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Toggle Emergency
+                  </div>
+                  <div class="action-card" id="contactActionDelete">
+                    <i class="fa-solid fa-trash-can"></i> Delete Contact
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Favorites List -->
+              <div class="sub-screen" id="favoritesView">
+                <div class="module-title-bar">Favorites</div>
+                <div class="module-cards-container" id="favoritesContainer"></div>
+              </div>
+
+              <!-- Submodule: Recent Calls Log -->
+              <div class="sub-screen" id="recentsView">
+                <div class="module-title-bar">Recent Calls</div>
+                <div class="module-cards-container" id="recentsContainer"></div>
+              </div>
+
+              <!-- Submodule: Handwriting Dialer -->
+              <div class="sub-screen" id="handwritingDialerView">
+                <div class="handwriting-header">
+                  <div class="handwriting-number-log" id="dialerNumberLog">No number</div>
+                  <div class="handwriting-helper-hint">Draw a digit (0-9) on the screen</div>
+                </div>
+                <canvas class="handwriting-canvas" id="handwritingCanvas"></canvas>
+                <div class="handwriting-controls">
+                  <div class="h-ctrl-btn" id="handwritingConfirmDigit">
+                    <i class="fa-solid fa-check"></i> Tap: Confirm
+                  </div>
+                  <div class="h-ctrl-btn" id="handwritingDeleteDigit">
+                    <i class="fa-solid fa-backspace"></i> Long Press: Delete
+                  </div>
+                  <div class="h-ctrl-btn" id="handwritingPlaceCall">
+                    <i class="fa-solid fa-phone"></i> Double Tap: Call
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Camera screen -->
+            <div class="screen-view" id="cameraScreen">
+              <!-- Submodule: Camera Menu -->
+              <div class="sub-screen active" id="cameraMenuView">
+                <div class="module-title-bar">
+                  <i class="fa-solid fa-camera"></i> Camera
+                </div>
+                <div class="module-cards-container">
+                  <div class="menu-item-card" id="cameraOptOCR">
+                    <i class="fa-solid fa-file-invoice"></i> Read Text (OCR)
+                  </div>
+                  <div class="menu-item-card" id="cameraOptObject">
+                    <i class="fa-solid fa-cubes"></i> Object Detection
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Active Camera Viewport -->
+              <div class="sub-screen" id="cameraActiveView">
+                <div class="camera-viewport-wrapper">
+                  <video class="camera-video-feed" id="webcamFeed" autoplay playsinline muted></video>
+                  <div class="camera-mock-scene" id="mockSceneView">
+                    <!-- Image content simulated in CSS/JS based on selected mock scene -->
+                  </div>
+                  <div class="camera-overlay-frame">
+                    <div class="frame-corner tl"></div>
+                    <div class="frame-corner tr"></div>
+                    <div class="frame-corner bl"></div>
+                    <div class="frame-corner br"></div>
+                  </div>
+                  <div class="camera-toast" id="cameraToast">Analyzing...</div>
+                </div>
+                <div class="camera-instructions">
+                  <p id="cameraInstructionText">Double Tap to Capture & Read</p>
+                </div>
+              </div>
+
+              <!-- Submodule: Recognition Results -->
+              <div class="sub-screen" id="cameraResultsView">
+                <div class="module-title-bar">Recognition Result</div>
+                <div class="camera-result-body">
+                  <p id="cameraResultText">Analyzing text content...</p>
+                </div>
+                <div class="camera-result-actions">
+                  <div class="action-card" id="cameraActionReadTTS">
+                    <i class="fa-solid fa-volume-high"></i> TTS Speak
+                  </div>
+                  <div class="action-card" id="cameraActionReadMorse">
+                    <i class="fa-solid fa-fingerprint"></i> Morse Haptic
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation screen -->
+            <div class="screen-view" id="navigationScreen">
+              <!-- Submodule: Navigation Menu -->
+              <div class="sub-screen active" id="navMenuView">
+                <div class="module-title-bar">
+                  <i class="fa-solid fa-compass"></i> Navigation
+                </div>
+                <div class="module-cards-container">
+                  <div class="menu-item-card" id="navOptDestination">
+                    <i class="fa-solid fa-map-pin"></i> Enter Destination
+                  </div>
+                  <div class="menu-item-card" id="navOptFavorites">
+                    <i class="fa-solid fa-star"></i> Saved Places
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Enter Destination (Uses STT) -->
+              <div class="sub-screen" id="navDestinationInputView">
+                <div class="nav-dest-wrapper">
+                  <div class="stt-mic-indicator" id="navDestMicBtn">
+                    <i class="fa-solid fa-microphone"></i>
+                  </div>
+                  <p class="nav-dest-status" id="navDestStatus">Speak your destination...</p>
+                  <div class="nav-dest-result" id="navDestResult">"Say a landmark or address"</div>
+                </div>
+              </div>
+
+              <!-- Submodule: Search Results list -->
+              <div class="sub-screen" id="navResultsView">
+                <div class="module-title-bar">Search Results</div>
+                <div class="module-cards-container" id="navResultsContainer"></div>
+              </div>
+
+              <!-- Submodule: Selected Destination Actions -->
+              <div class="sub-screen" id="navActionsView">
+                <div class="module-title-bar" id="selectedDestName">Eurofarm Pharmacy</div>
+                <div class="module-cards-container">
+                  <div class="action-card" id="navActionStart">
+                    <i class="fa-solid fa-location-arrow"></i> Start Navigation
+                  </div>
+                  <div class="action-card" id="navActionCall">
+                    <i class="fa-solid fa-phone"></i> Call Location
+                  </div>
+                  <div class="action-card" id="navActionSave">
+                    <i class="fa-solid fa-star"></i> Add to Saved Places
+                  </div>
+                  <div class="action-card" id="navActionShare">
+                    <i class="fa-solid fa-share-nodes"></i> Share Location
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Active Turn-by-Turn Map View -->
+              <div class="sub-screen" id="navActiveRoutingView">
+                <div class="active-routing-container">
+                  <div class="routing-top-bar">
+                    <div class="routing-arrow" id="routingTurnArrow"><i class="fa-solid fa-arrow-up"></i></div>
+                    <div class="routing-instruction" id="routingInstruction">Go straight for 200m</div>
+                  </div>
+                  <div class="routing-map-simulation">
+                    <div class="map-path-line"></div>
+                    <div class="map-user-dot"></div>
+                  </div>
+                  <div class="routing-footer">
+                    <div class="routing-dest-label" id="routingDestName">Eurofarm</div>
+                    <div class="routing-distance" id="routingDistance">ETA: 4 mins • 350m</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Settings screen -->
+            <div class="screen-view" id="settingsScreen">
+              <!-- Submodule: Settings Menu -->
+              <div class="sub-screen active" id="settingsMenuView">
+                <div class="module-title-bar">
+                  <i class="fa-solid fa-sliders"></i> Settings
+                </div>
+                <div class="module-cards-container">
+                  <div class="menu-item-card" id="settingsOptAccessibility">
+                    <i class="fa-solid fa-universal-access"></i> Accessibility
+                  </div>
+                  <div class="menu-item-card" id="settingsOptQuick">
+                    <i class="fa-solid fa-bolt"></i> Quick Access
+                  </div>
+                  <div class="menu-item-card" id="settingsOptEmergency">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Emergency Contacts
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Accessibility Settings -->
+              <div class="sub-screen" id="accessibilitySettingsView">
+                <div class="module-title-bar">Accessibility</div>
+                <div class="module-cards-container">
+                  <div class="setting-item-card" id="setOptReadingMode">
+                    <div class="card-left">Reading Mode</div>
+                    <div class="card-right" id="lblReadingModeVal">Voice</div>
+                  </div>
+                  <div class="setting-item-card" id="setOptPrivacyMode">
+                    <div class="card-left">Privacy Mode</div>
+                    <div class="card-right" id="lblPrivacyModeVal">Automatic</div>
+                  </div>
+                  <div class="setting-slider-card">
+                    <div class="slider-labels">
+                      <span>Vibration Intensity</span>
+                      <span id="lblVibeVal">Medium</span>
+                    </div>
+                    <input type="range" min="1" max="3" value="2" class="vibe-slider" id="vibeIntensityRange">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submodule: Quick Access Settings -->
+              <div class="sub-screen" id="quickAccessSettingsView">
+                <div class="module-title-bar">Quick Access</div>
+                <div class="quick-access-desc">Personalize swipe-down actions:</div>
+                <div class="module-cards-container" id="quickAccessConfigContainer">
+                  <!-- Dynamically generated toggles -->
+                </div>
+              </div>
+
+              <!-- Submodule: Emergency Contacts settings -->
+              <div class="sub-screen" id="emergencySettingsView">
+                <div class="module-title-bar">Emergency Contacts</div>
+                <div class="module-cards-container" id="emergencySettingsContainer"></div>
+              </div>
+            </div>
+
+            <!-- Tutorial Screen -->
+            <div class="screen-view" id="tutorialScreen">
+              <div class="tutorial-wrapper">
+                <div class="tutorial-header">
+                  <div class="tut-step-dot active"></div>
+                  <div class="tut-step-dot"></div>
+                  <div class="tut-step-dot"></div>
+                  <div class="tut-step-dot"></div>
+                </div>
+                <div class="tutorial-body">
+                  <h3 id="tutTitle">Step 1: Navigating</h3>
+                  <div class="tut-animation-container" id="tutAnimationBox">
+                    <i class="fa-solid fa-hand-pointer tut-hand-icon"></i>
+                  </div>
+                  <p id="tutText">Swipe RIGHT to go to the next item, Swipe LEFT for the previous item.</p>
+                </div>
+                <div class="tutorial-indicator" id="tutIndicatorText">Try it now: Swipe Right</div>
+              </div>
+            </div>
+
+            <!-- Active Call overlay screen -->
+            <div class="screen-view" id="activeCallScreen">
+              <div class="active-call-container">
+                <div class="caller-photo-avatar">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                <h2 class="caller-name" id="activeCallName">Mother</h2>
+                <div class="call-duration" id="activeCallTimer">00:04</div>
+                <div class="call-status" id="activeCallStatus">Active Call</div>
+                <div class="active-call-actions">
+                  <button class="end-call-btn" id="btnEndCall">
+                    <i class="fa-solid fa-phone-slash"></i> Double Tap: End Call
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SOS Active Overlay -->
+            <div class="screen-view" id="sosScreen">
+              <div class="sos-container">
+                <div class="sos-header">
+                  <div class="sos-icon-ring animate-ping"></div>
+                  <i class="fa-solid fa-triangle-exclamation sos-bell"></i>
+                </div>
+                <h1 class="sos-heading">SOS ACTIVE</h1>
+                <div class="sos-countdown" id="sosCountdownBox">3</div>
+                <p class="sos-instruction" id="sosInstructionsText">HOLD DOWN SCREEN TO CANCEL</p>
+                
+                <div class="sos-dispatched-screen" id="sosDispatchedInfo">
+                  <div class="blinking-alert">🚨 HELP REQUIRED 🚨</div>
+                  <p class="sms-log-alert">SMS sent to all Emergency Contacts!</p>
+                  <p class="gps-coordinates-label" id="sosGPSCoordinates">Location: 42.0012° N, 21.4316° E</p>
+                  <div class="emergency-help-card">
+                    <h3>I AM BLIND. PLEASE HELP.</h3>
+                    <p>Contact: <span id="sosPrimaryEmergencyContact">Mother (+389 70 123 456)</span></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Access Swipe Down Overlay -->
+            <div class="quick-access-overlay" id="quickAccessOverlay">
+              <div class="quick-access-panel">
+                <div class="qa-header">
+                  <i class="fa-solid fa-bolt"></i> Quick Access
+                </div>
+                <div class="qa-body" id="quickAccessItemsContainer">
+                  <!-- Custom items e.g., "Call Mother", "Navigate Home" -->
+                </div>
+                <div class="qa-footer">Swipe Up to Close</div>
+              </div>
+            </div>
+
+            <!-- Biometric Authentication overlay -->
+            <div class="biometric-overlay" id="biometricOverlay">
+              <div class="biometric-modal">
+                <div class="bio-face-id" id="bioFaceIdIcon">
+                  <div class="face-frame"></div>
+                  <i class="fa-solid fa-smile-wink bio-scanner"></i>
+                </div>
+                <div class="bio-touch-id hidden" id="bioTouchIdIcon">
+                  <i class="fa-solid fa-fingerprint bio-scanner"></i>
+                </div>
+                <h3 id="bioPromptTitle">Confirm Identity</h3>
+                <p id="bioPromptText">Face ID Scanning...</p>
+                <div class="bio-buttons">
+                  <button class="bio-btn success" id="btnSimulateBioSuccess">Succeed</button>
+                  <button class="bio-btn fail" id="btnSimulateBioFail">Fail</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Simulator Dashboard -->
+    <section class="dashboard-column">
+      <!-- Section 1: Haptic & Speech Visualizers -->
+      <div class="panel-card haptic-voice-card">
+        <h2><i class="fa-solid fa-wave-square"></i> Audio & Haptic Outputs</h2>
+        <div class="visualizer-row">
+          <div class="visualizer-box">
+            <span class="vis-title">Vibration Visualizer</span>
+            <div class="haptic-circle-wrapper">
+              <div class="haptic-ripple" id="hapticRippleRing"></div>
+              <div class="haptic-center-core" id="hapticCenterDot"></div>
+            </div>
+            <div class="vibration-symbol-log" id="vibeSymbolText">No signal</div>
+          </div>
+          
+          <div class="visualizer-box">
+            <span class="vis-title">Text-To-Speech (TTS) Log</span>
+            <div class="tts-terminal">
+              <div class="tts-text-output" id="ttsOutputLog">> Simulator ready. Welcome.</div>
+            </div>
+            <div class="tts-voice-controls">
+              <button class="tts-mute-btn" id="btnToggleSpeech">
+                <i class="fa-solid fa-volume-high" id="ttsVolumeIcon"></i> Voice Mute: Off
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Sensor & Gesture Simulator Controls -->
+      <div class="panel-card sensors-card">
+        <h2><i class="fa-solid fa-gamepad"></i> Hardware & Gesture Simulator</h2>
+        <p class="panel-desc">Simulate physical gestures and phone sensors that would normally trigger in a mobile app:</p>
+        <div class="control-grids">
+          <div class="ctrl-group">
+            <h3>Physical Inputs</h3>
+            <div class="button-grid">
+              <button class="ctrl-btn shake-btn" id="btnSimulateShake">
+                <i class="fa-solid fa-mobile-screen-button animate-bounce"></i> Double Shake (SOS)
+              </button>
+              <button class="ctrl-btn" id="btnSimulateBioLock">
+                <i class="fa-solid fa-fingerprint"></i> Lock w/ Biometrics
+              </button>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <h3>Manual Gestures</h3>
+            <div class="button-grid">
+              <button class="ctrl-btn" id="btnSimulateSwipeL"><i class="fa-solid fa-arrow-left"></i> Swipe Left</button>
+              <button class="ctrl-btn" id="btnSimulateSwipeR"><i class="fa-solid fa-arrow-right"></i> Swipe Right</button>
+              <button class="ctrl-btn" id="btnSimulateSwipeU"><i class="fa-solid fa-arrow-up"></i> Swipe Up</button>
+              <button class="ctrl-btn" id="btnSimulateSwipeD"><i class="fa-solid fa-arrow-down"></i> Swipe Down</button>
+              <button class="ctrl-btn" id="btnSimulateTap"><i class="fa-solid fa-hand-pointer"></i> Tap</button>
+              <button class="ctrl-btn" id="btnSimulateDblTap"><i class="fa-solid fa-circle-play"></i> Double Tap</button>
+              <button class="ctrl-btn" id="btnSimulateLongPress"><i class="fa-solid fa-hourglass-start"></i> Long Press</button>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <h3>OCR Mock Scenes</h3>
+            <select class="scene-select" id="ocrSceneSelect">
+              <option value="medicine">Medicine Bottle Label ("Paracetamol, take 1 tablet daily")</option>
+              <option value="book">Book Page ("Chapter 1. It was a dark and stormy night...")</option>
+              <option value="label">Product Price Tag ("Whole Milk, 1L, Price: $1.99")</option>
+              <option value="menu">Restaurant Menu ("Pasta Carbonara - 12 USD, Lasagna - 14 USD")</option>
+              <option value="webcam">REAL WEBCAM (Use Live Camera Feed)</option>
+            </select>
+            <select class="scene-select mt-1" id="objectSceneSelect">
+              <option value="chair">Living Room Scene ("Office Chair detected in front")</option>
+              <option value="cup">Coffee Table Scene ("Coffee Cup and Notebook detected")</option>
+              <option value="keyboard">Desk Scene ("Computer Keyboard and Mouse detected")</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Active Processes Logs -->
+      <div class="panel-card logs-card">
+        <h2><i class="fa-solid fa-rectangle-list"></i> System Logs & Network Activity</h2>
+        <div class="logs-console" id="systemLogsConsole">
+          <div class="log-entry system">[SYSTEM] BlindTouch simulator initialized.</div>
+          <div class="log-entry system">[SYSTEM] LocalStorage database loaded.</div>
+          <div class="log-entry system">[SYSTEM] Audio and speech systems loaded.</div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer-bar">
+      <p>BlindTouch Accessibility Simulator. Designed in HTML5, CSS3, and ES6 JavaScript.</p>
+    </footer>
+
+    <!-- Audio Elements for Haptic sound effects -->
+    <audio id="soundBeepShort" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav" preload="auto"></audio>
+    <audio id="soundBeepLong" src="https://assets.mixkit.co/active_storage/sfx/911/911-84.wav" preload="auto"></audio>
+    <audio id="soundSiren" src="https://assets.mixkit.co/active_storage/sfx/967/967-84.wav" preload="auto" loop></audio>
+    <audio id="soundCallRinging" src="https://assets.mixkit.co/active_storage/sfx/1633/1633-84.wav" preload="auto" loop></audio>
+    <audio id="soundCallConnected" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav" preload="auto"></audio>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
