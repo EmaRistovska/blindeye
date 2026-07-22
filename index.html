@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BlindTouch - Interactive Accessibility Simulator</title>
-  <meta name="description" content="An interactive full-featured simulator of the BlindTouch mobile accessibility platform for visually impaired users. Test gesture navigation, Morse haptics, handwriting recognition, and voice interfaces.">
+  <title>BlindEye - Interactive Accessibility Simulator</title>
+  <meta name="description"
+    content="An interactive full-featured simulator of the BlindEye mobile accessibility platform for visually impaired users. Test gesture navigation, Morse haptics, handwriting recognition, and voice interfaces.">
   <link rel="stylesheet" href="style.css">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
   <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
   <div class="workspace-bg">
     <div class="orb orb-1"></div>
@@ -23,7 +27,7 @@
   <header class="app-header">
     <div class="logo">
       <i class="fa-solid fa-eye-slash logo-icon"></i>
-      <h1>BlindTouch <span class="logo-badge">Prototype Simulator</span></h1>
+      <h1>BlindEye <span class="logo-badge">Prototype Simulator</span></h1>
     </div>
     <div class="status-indicator">
       <span class="pulse-dot"></span> Localhost Dev Server Mode
@@ -41,7 +45,7 @@
           <div class="volume-up button-physical"></div>
           <div class="volume-down button-physical"></div>
           <div class="power-button button-physical"></div>
-          
+
           <!-- Screen Screen Content -->
           <div class="phone-screen" id="phoneScreen">
             <!-- Privacy Screen overlay (For Privacy Mode) -->
@@ -56,60 +60,85 @@
             <!-- Welcome/Initial screen -->
             <div class="screen-view active" id="welcomeScreen">
               <div class="welcome-card">
+                <br></br><br></br><br></br><br></br><br></br>
                 <i class="fa-solid fa-hands-holding-child welcome-logo"></i>
-                <h2>Welcome to BlindTouch</h2>
-                <p>An accessible system for visually impaired users.</p>
-                <button class="welcome-btn primary-btn" id="startTutorialBtn">
-                  <i class="fa-solid fa-graduation-cap"></i> Start Tutorial
-                </button>
+                <h2>Welcome to BlindEye</h2>
+                <!-- <p id="welcomeSubtext">An accessible system for visually impaired users.</p> -->
+                <!-- <button class="welcome-btn primary-btn" id="startTutorialBtn">
+                  <i class="fa-solid fa-rotate-left"></i> Restart Tutorial
+                </button> -->
+                <br></br><br></br><br></br><br></br>
                 <button class="welcome-btn secondary-btn" id="skipTutorialBtn">
-                  Skip to Main Menu
+                  Go to Main Menu Now
                 </button>
+              </div>
+            </div>
+
+            <!-- Tutorial / Calibration screen -->
+            <div class="screen-view" id="tutorialScreen"
+              style="background: #000000; position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <div class="tutorial-header"
+                style="padding: 16px 20px; text-align: center; border-bottom: 1px dashed #444; flex-shrink: 0;">
+                <h2 style="color: #FFCC00; font-size: 1.3rem; margin: 0; font-weight: 800; text-transform: uppercase;">
+                  LETTER CALIBRATION</h2>
+                <div id="tutorialLetterCounter"
+                  style="color: #FFFFFF; font-size: 1.1rem; font-weight: bold; margin-top: 6px;">Draw letter M [ 1 / 3 ]
+                </div>
+                <div id="tutorialInstructionText" style="color: #FFCC00; font-size: 0.85rem; margin-top: 4px;">Draw the
+                  letter on the screen</div>
+              </div>
+              <canvas class="handwriting-canvas" id="tutorialCanvas"
+                style="width: 100%; flex: 1; display: block; background: #000000; touch-action: none;"></canvas>
+              <div style="border-top: 1px dashed #444; width: 100%; padding: 10px; text-align: center; flex-shrink: 0;">
+                <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Draw letter 3 times to calibrate
+                  stroke profile ]</span>
               </div>
             </div>
 
             <!-- Main Menu screen -->
-            <div class="screen-view" id="mainMenuScreen">
-              <div class="module-cards-container" id="menuCardsContainer">
-                <!-- Cards will be populated dynamically -->
-              </div>
-              <div class="fixed-navigation-area" id="navigationArea">
-                <div class="nav-indicator-line"></div>
-                <div class="nav-label">FIXED SWIPE NAVIGATION ZONE</div>
-              </div>
+            <div class="screen-view" id="mainMenuScreen"
+              style="background: #000000; position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
+              <canvas class="handwriting-canvas" id="handwritingMenuCanvas"
+                style="width: 100%; height: 100%; display: block; background: #000000; touch-action: none;"></canvas>
             </div>
 
             <!-- Messages screen -->
             <div class="screen-view" id="messagesScreen">
-              <!-- Submodule: Thread List -->
+              <!-- Submodule: Thread List (Single Focus Card View) -->
               <div class="sub-screen active" id="msgThreadsView">
                 <div class="module-title-bar">
                   <i class="fa-solid fa-comment-sms"></i> Messages
                 </div>
-                <div class="module-cards-container" id="msgThreadsContainer"></div>
+                <div class="module-cards-container single-focus-container" id="msgThreadsContainer">
+                  <div class="single-focus-msg-card focused">
+                    <div class="msg-card-top-bar">
+                      <span class="msg-unread-tag"><i class="fa-solid fa-circle"></i> NEW</span>
+                      <span class="msg-counter-badge" id="msgCounterBadge">[ 1 / 3 ]</span>
+                    </div>
+                    <div class="msg-sender-info">
+                      <i class="fa-solid fa-user-circle sender-envelope-icon"></i>
+                      <span class="msg-sender-name" id="msgSenderName">Mother</span>
+                    </div>
+                    <div class="msg-snippet-box">
+                      <p class="msg-snippet-text" id="msgSnippetText">"Zdravo, kade si? Dojdi si..."</p>
+                    </div>
+                    <div class="msg-card-footer-hint" id="msgFooterHint">
+                      14:25 • Unread
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Submodule: Message Detail View -->
-              <div class="sub-screen" id="msgDetailView">
-                <div class="message-detail-header">
-                  <span id="msgDetailSender">Contact</span>
-                  <span class="msg-status-badge" id="msgDetailStatus">Unread</span>
-                </div>
-                <div class="message-detail-body">
-                  <p id="msgDetailBodyText">Loading message body...</p>
-                </div>
-                <div class="message-detail-actions">
-                  <div class="action-card" id="msgActionReadTTS">
-                    <i class="fa-solid fa-volume-high"></i> Speak Text (TTS)
+              <!-- Submodule: Message Detail View (Privacy Mode & Inline Input) -->
+              <!-- <div class="sub-screen" id="msgDetailView">
+                <div class="privacy-blackout-card" id="privacyBlackoutCard">
+                  <div class="privacy-shield-icon" id="privacyShieldIcon">
+                    <i class="fa-solid fa-user-shield"></i>
                   </div>
-                  <div class="action-card" id="msgActionReadMorse">
-                    <i class="fa-solid fa-fingerprint"></i> Read Morse Haptic
-                  </div>
-                  <div class="action-card" id="msgActionReply">
-                    <i class="fa-solid fa-reply"></i> Reply to Message
-                  </div>
+                  <h2 class="privacy-title" id="privacyTitle">PRIVACY MODE ACTIVE</h2>
+                  <p class="privacy-subtitle" id="privacySubtitle">Screen protected • Speak or tap to reply</p>
                 </div>
-              </div>
+              </div> -->
 
               <!-- Submodule: Reply Screen -->
               <div class="sub-screen" id="msgReplyView">
@@ -117,14 +146,14 @@
                   Reply to <span id="msgReplySender">Sender</span>
                 </div>
                 <div class="reply-modes-container">
-                  <div class="reply-mode-card" id="replyModeQuick">
-                    <i class="fa-solid fa-reply-all"></i> Quick Answers
-                  </div>
                   <div class="reply-mode-card" id="replyModeSTT">
                     <i class="fa-solid fa-microphone"></i> Voice Input (STT)
                   </div>
                   <div class="reply-mode-card" id="replyModeMorse">
                     <i class="fa-solid fa-fingerprint"></i> Morse Keyboard
+                  </div>
+                  <div class="reply-mode-card" id="replyModeQuick">
+                    <i class="fa-solid fa-reply-all"></i> Quick Answers
                   </div>
                 </div>
               </div>
@@ -169,25 +198,32 @@
               </div>
             </div>
 
-            <!-- Calls screen -->
+            <!-- Phone screen -->
             <div class="screen-view" id="callsScreen">
-              <!-- Submodule: Calls Sub-Menu -->
+              <!-- Submodule: Phone Sub-Menu (Single Focus Hero Card View) -->
               <div class="sub-screen active" id="callsMenuView">
                 <div class="module-title-bar">
-                  <i class="fa-solid fa-phone"></i> Calls
+                  <i class="fa-solid fa-phone"></i> Phone
                 </div>
-                <div class="module-cards-container">
-                  <div class="menu-item-card" id="callsOptContacts">
-                    <i class="fa-solid fa-address-book"></i> Contacts
-                  </div>
-                  <div class="menu-item-card" id="callsOptFavorites">
-                    <i class="fa-solid fa-star"></i> Favorites
-                  </div>
-                  <div class="menu-item-card" id="callsOptRecents">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Recent Calls
-                  </div>
-                  <div class="menu-item-card" id="callsOptDialer">
-                    <i class="fa-solid fa-pen-nib"></i> Handwriting Dialer
+                <div class="module-cards-container single-focus-container" id="callsMenuContainer">
+                  <div class="single-focus-hero-card focused">
+                    <div class="hero-card-header">
+                      <span class="hero-category-tag"><i class="fa-solid fa-phone"></i> OPTION</span>
+                      <span class="msg-counter-badge" id="callsCounterBadge">[ 1 / 4 ]</span>
+                    </div>
+
+                    <div class="hero-icon-circle">
+                      <i class="fa-solid fa-address-book hero-center-icon" id="callsHeroIcon"></i>
+                    </div>
+
+                    <div class="hero-title-group">
+                      <h2 class="hero-category-title" id="callsHeroTitle">CONTACTS</h2>
+                      <!-- <p class="hero-category-subtitle" id="callsHeroSubtitle">"Browse and search your phonebook"</p> -->
+                    </div>
+
+                    <div class="hero-card-footer-hint" id="callsHeroFooter">
+                      [ Two-Finger Swipe Down: Quick Access • Long Press: Back ]
+                    </div>
                   </div>
                 </div>
               </div>
@@ -198,23 +234,10 @@
                 <div class="module-cards-container" id="contactsContainer"></div>
               </div>
 
-              <!-- Submodule: Contact Actions -->
+              <!-- Submodule: Contact Actions (Single Focus Card View) -->
               <div class="sub-screen" id="contactActionsView">
-                <div class="module-title-bar" id="actionContactName">Contact Name</div>
-                <div class="module-cards-container">
-                  <div class="action-card" id="contactActionCall">
-                    <i class="fa-solid fa-phone"></i> Call Contact
-                  </div>
-                  <div class="action-card" id="contactActionFavorite">
-                    <i class="fa-solid fa-star"></i> Toggle Favorite
-                  </div>
-                  <div class="action-card" id="contactActionEmergency">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Toggle Emergency
-                  </div>
-                  <div class="action-card" id="contactActionDelete">
-                    <i class="fa-solid fa-trash-can"></i> Delete Contact
-                  </div>
-                </div>
+                <div class="module-title-bar" id="actionContactName">Contact Options</div>
+                <div class="module-cards-container single-focus-container" id="contactActionsContainer"></div>
               </div>
 
               <!-- Submodule: Favorites List -->
@@ -236,16 +259,9 @@
                   <div class="handwriting-helper-hint">Draw a digit (0-9) on the screen</div>
                 </div>
                 <canvas class="handwriting-canvas" id="handwritingCanvas"></canvas>
-                <div class="handwriting-controls">
-                  <div class="h-ctrl-btn" id="handwritingConfirmDigit">
-                    <i class="fa-solid fa-check"></i> Tap: Confirm
-                  </div>
-                  <div class="h-ctrl-btn" id="handwritingDeleteDigit">
-                    <i class="fa-solid fa-backspace"></i> Long Press: Delete
-                  </div>
-                  <div class="h-ctrl-btn" id="handwritingPlaceCall">
-                    <i class="fa-solid fa-phone"></i> Double Tap: Call
-                  </div>
+                <div class="hero-card-footer-hint"
+                  style="color: #FFCC00; font-size: 0.8rem; font-weight: 700; text-align: center; margin-top: 8px;">
+                  [ Swipe Left: Delete Digit • Double Tap: Call • Long Press: Back ]
                 </div>
               </div>
             </div>
@@ -257,14 +273,7 @@
                 <div class="module-title-bar">
                   <i class="fa-solid fa-camera"></i> Camera
                 </div>
-                <div class="module-cards-container">
-                  <div class="menu-item-card" id="cameraOptOCR">
-                    <i class="fa-solid fa-file-invoice"></i> Read Text (OCR)
-                  </div>
-                  <div class="menu-item-card" id="cameraOptObject">
-                    <i class="fa-solid fa-cubes"></i> Object Detection
-                  </div>
-                </div>
+                <div class="module-cards-container" id="cameraMenuContainer"></div>
               </div>
 
               <!-- Submodule: Active Camera Viewport -->
@@ -290,15 +299,26 @@
               <!-- Submodule: Recognition Results -->
               <div class="sub-screen" id="cameraResultsView">
                 <div class="module-title-bar">Recognition Result</div>
-                <div class="camera-result-body">
-                  <p id="cameraResultText">Analyzing text content...</p>
-                </div>
-                <div class="camera-result-actions">
-                  <div class="action-card" id="cameraActionReadTTS">
-                    <i class="fa-solid fa-volume-high"></i> TTS Speak
-                  </div>
-                  <div class="action-card" id="cameraActionReadMorse">
-                    <i class="fa-solid fa-fingerprint"></i> Morse Haptic
+                <div class="module-cards-container" id="cameraResultsContainer">
+                  <div class="single-focus-hero-card focused"
+                    style="display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:24px; box-sizing:border-box;">
+                    <div class="hero-card-header" style="width:100%;">
+                      <span class="hero-category-tag"><i class="fa-solid fa-file-lines"></i> SCANNED TEXT</span>
+                      <span class="msg-counter-badge">[ RESULT ]</span>
+                    </div>
+
+                    <div class="camera-result-body"
+                      style="flex:1; display:flex; align-items:center; justify-content:center; width:100%; overflow-y:auto; margin:16px 0;">
+                      <p id="cameraResultText"
+                        style="color:#FFFFFF; font-size:1.25rem; font-weight:600; line-height:1.6; text-align:center; margin:0;">
+                        Analyzing text content...
+                      </p>
+                    </div>
+
+                    <div class="hero-card-footer-hint"
+                      style="color:#FFCC00; font-size:0.8rem; font-weight:700; text-align:center;">
+                      [ Tap: Replay Output • Double Tap: Copy • Long Press: Back ]
+                    </div>
                   </div>
                 </div>
               </div>
@@ -311,49 +331,68 @@
                 <div class="module-title-bar">
                   <i class="fa-solid fa-compass"></i> Navigation
                 </div>
-                <div class="module-cards-container">
-                  <div class="menu-item-card" id="navOptDestination">
-                    <i class="fa-solid fa-map-pin"></i> Enter Destination
+                <div class="navigation-card-wrapper" id="navMenuContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div class="hero-card"
+                    style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000;">
+
+                    <!-- Card Header -->
+                    <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #FFCC00; font-weight: bold;">[ OPTION ]</span>
+                      <span style="color: #FFFFFF; font-weight: bold;">[ 1 / 2 ]</span>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                      <div
+                        style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #FFCC00; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-location-dot" style="font-size: 2.2rem; color: #FFCC00;"></i>
+                      </div>
+                      <h2
+                        style="color: #FFCC00; font-size: 2rem; margin: 0; font-weight: 800; text-transform: uppercase;">
+                        ENTER DESTINATION</h2>
+                      <p style="color: #FFFFFF; font-size: 1rem; text-align: center; margin: 0;">Search address via
+                        voice or typing</p>
+                    </div>
+
+                    <!-- Card Footer -->
+                    <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center;">
+                      <span style="color: #FFCC00; font-size: 0.85rem;">[ Two-Finger Swipe Down: Quick Access • Long
+                        Press: Back ]</span>
+                    </div>
+
                   </div>
-                  <div class="menu-item-card" id="navOptFavorites">
-                    <i class="fa-solid fa-star"></i> Saved Places
+
+                  <!-- Indicator Dots -->
+                  <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 12px;">
+                    <span style="width: 24px; height: 8px; background: #FFCC00; border-radius: 4px;"></span>
+                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
                   </div>
                 </div>
               </div>
 
-              <!-- Submodule: Enter Destination (Uses STT) -->
+              <!-- Submodule: Enter Destination (Multi-Modal STT & Morse) -->
               <div class="sub-screen" id="navDestinationInputView">
-                <div class="nav-dest-wrapper">
-                  <div class="stt-mic-indicator" id="navDestMicBtn">
+                <div class="nav-dest-wrapper" id="navDestWrapper">
+                  <div class="hero-icon-circle" id="navDestMicBtn">
                     <i class="fa-solid fa-microphone"></i>
                   </div>
-                  <p class="nav-dest-status" id="navDestStatus">Speak your destination...</p>
-                  <div class="nav-dest-result" id="navDestResult">"Say a landmark or address"</div>
+                  <h2 class="nav-dest-title" id="navDestTitle">ENTER DESTINATION</h2>
+                  <p class="nav-dest-subtitle" id="navDestSubtitle">Speak or tap Morse code to search</p>
                 </div>
               </div>
 
-              <!-- Submodule: Search Results list -->
+              <!-- Submodule: Search Results list / Saved Places -->
               <div class="sub-screen" id="navResultsView">
-                <div class="module-title-bar">Search Results</div>
-                <div class="module-cards-container" id="navResultsContainer"></div>
+                <div class="module-title-bar" id="navResultsTitle">Saved Places</div>
+                <div class="module-cards-container single-focus-container" id="navResultsContainer"></div>
               </div>
 
-              <!-- Submodule: Selected Destination Actions -->
+              <!-- Submodule: Selected Destination Actions (Single Focus Card Carousel) -->
               <div class="sub-screen" id="navActionsView">
-                <div class="module-title-bar" id="selectedDestName">Eurofarm Pharmacy</div>
-                <div class="module-cards-container">
-                  <div class="action-card" id="navActionStart">
-                    <i class="fa-solid fa-location-arrow"></i> Start Navigation
-                  </div>
-                  <div class="action-card" id="navActionCall">
-                    <i class="fa-solid fa-phone"></i> Call Location
-                  </div>
-                  <div class="action-card" id="navActionSave">
-                    <i class="fa-solid fa-star"></i> Add to Saved Places
-                  </div>
-                  <div class="action-card" id="navActionShare">
-                    <i class="fa-solid fa-share-nodes"></i> Share Location
-                  </div>
+                <div class="module-title-bar" id="selectedDestName" style="display:none;">Eurofarm Pharmacy</div>
+                <div class="destination-actions-card-wrapper" id="navActionsContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                 </div>
               </div>
 
@@ -383,55 +422,79 @@
                 <div class="module-title-bar">
                   <i class="fa-solid fa-sliders"></i> Settings
                 </div>
-                <div class="module-cards-container">
-                  <div class="menu-item-card" id="settingsOptAccessibility">
-                    <i class="fa-solid fa-universal-access"></i> Accessibility
+                <div class="settings-card-wrapper" id="settingsMenuContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div class="hero-card"
+                    style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
+
+                    <!-- Card Header -->
+                    <div class="card-header"
+                      style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
+                      <span class="card-header-title"
+                        style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SETTINGS</span>
+                      <span class="card-header-counter"
+                        style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[
+                        1 / 3 ]</span>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div
+                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
+                      <div class="hero-icon-circle"
+                        style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; margin: 0 auto; background: rgba(255, 204, 0, 0.05);">
+                        <i class="fa-solid fa-universal-access"
+                          style="font-size: 2.2rem; color: #FFCC00; line-height: 1; margin: 0; padding: 0;"></i>
+                      </div>
+                      <h2
+                        style="color: #FFCC00; font-size: 1.7rem; margin: 0 auto; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; width: 100%; word-break: break-word;">
+                        ACCESSIBILITY</h2>
+                    </div>
+
+                    <!-- Card Footer -->
+                    <div
+                      style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+                      <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Two-Finger Swipe Down: Quick
+                        Access • Long Press: Back ]</span>
+                    </div>
+
                   </div>
-                  <div class="menu-item-card" id="settingsOptQuick">
-                    <i class="fa-solid fa-bolt"></i> Quick Access
-                  </div>
-                  <div class="menu-item-card" id="settingsOptEmergency">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Emergency Contacts
+
+                  <!-- Indicator Dots -->
+                  <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+                    <span style="width: 24px; height: 8px; background: #FFCC00; border-radius: 4px;"></span>
+                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
+                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
                   </div>
                 </div>
               </div>
 
               <!-- Submodule: Accessibility Settings -->
               <div class="sub-screen" id="accessibilitySettingsView">
-                <div class="module-title-bar">Accessibility</div>
-                <div class="module-cards-container">
-                  <div class="setting-item-card" id="setOptReadingMode">
-                    <div class="card-left">Reading Mode</div>
-                    <div class="card-right" id="lblReadingModeVal">Voice</div>
-                  </div>
-                  <div class="setting-item-card" id="setOptPrivacyMode">
-                    <div class="card-left">Privacy Mode</div>
-                    <div class="card-right" id="lblPrivacyModeVal">Automatic</div>
-                  </div>
-                  <div class="setting-slider-card">
-                    <div class="slider-labels">
-                      <span>Vibration Intensity</span>
-                      <span id="lblVibeVal">Medium</span>
-                    </div>
-                    <input type="range" min="1" max="3" value="2" class="vibe-slider" id="vibeIntensityRange">
-                  </div>
+                <div class="module-title-bar" style="display:none;">Accessibility</div>
+                <div class="accessibility-card-wrapper" id="accessibilityConfigContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <!-- Dynamically rendered hero cards -->
                 </div>
               </div>
 
               <!-- Submodule: Quick Access Settings -->
               <div class="sub-screen" id="quickAccessSettingsView">
-                <div class="module-title-bar">Quick Access</div>
-                <div class="quick-access-desc">Personalize swipe-down actions:</div>
-                <div class="module-cards-container" id="quickAccessConfigContainer">
-                  <!-- Dynamically generated toggles -->
+                <div class="module-title-bar" style="display:none;">Quick Access</div>
+                <div class="quick-access-card-wrapper" id="quickAccessConfigContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <!-- Dynamically rendered hero cards -->
                 </div>
               </div>
 
-              <!-- Submodule: Emergency Contacts settings -->
-              <div class="sub-screen" id="emergencySettingsView">
-                <div class="module-title-bar">Emergency Contacts</div>
-                <div class="module-cards-container" id="emergencySettingsContainer"></div>
+              <!-- Submodule: Add Quick Action Type Selector -->
+              <div class="sub-screen" id="quickActionTypeView">
+                <div class="module-title-bar" style="display:none;">Action Type</div>
+                <div class="quick-action-type-wrapper" id="quickActionTypeContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <!-- Dynamically rendered action type options -->
+                </div>
               </div>
+
             </div>
 
             <!-- Tutorial Screen -->
@@ -451,6 +514,24 @@
                   <p id="tutText">Swipe RIGHT to go to the next item, Swipe LEFT for the previous item.</p>
                 </div>
                 <div class="tutorial-indicator" id="tutIndicatorText">Try it now: Swipe Right</div>
+              </div>
+            </div>
+
+            <!-- Incoming Call overlay screen -->
+            <div id="incomingCallScreen" class="screen-view hidden">
+              <div class="single-focus-card incoming-card">
+                <div class="card-header-line">
+                  <span class="card-category-tag">[ INCOMING CALL ]</span>
+                  <i class="fa-solid fa-phone-incoming pulsing-icon"></i>
+                </div>
+                <div class="caller-avatar-circle">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                <h2 id="incomingCallerName" class="hero-title">Brother</h2>
+                <p id="incomingCallerNumber" class="hero-subtitle">+389 71 987 654</p>
+                <div class="card-footer-hint">
+                  <span>[ Double Tap: Answer • Long Press: Decline ]</span>
+                </div>
               </div>
             </div>
 
@@ -474,21 +555,37 @@
             <!-- SOS Active Overlay -->
             <div class="screen-view" id="sosScreen">
               <div class="sos-container">
-                <div class="sos-header">
-                  <div class="sos-icon-ring animate-ping"></div>
-                  <i class="fa-solid fa-triangle-exclamation sos-bell"></i>
+                <!-- Phase 1: Countdown UI -->
+                <div id="sosCountdownContainer" class="sos-phase-countdown" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%;">
+                  <div class="sos-header">
+                    <div class="sos-icon-ring animate-ping"></div>
+                    <i class="fa-solid fa-triangle-exclamation sos-bell"></i>
+                  </div>
+                  <h1 class="sos-heading">SOS ACTIVE</h1>
+                  <div class="sos-countdown" id="sosCountdownBox">3</div>
+                  <p class="sos-instruction" id="sosInstructionsText">HOLD DOWN SCREEN TO CANCEL</p>
                 </div>
-                <h1 class="sos-heading">SOS ACTIVE</h1>
-                <div class="sos-countdown" id="sosCountdownBox">3</div>
-                <p class="sos-instruction" id="sosInstructionsText">HOLD DOWN SCREEN TO CANCEL</p>
-                
-                <div class="sos-dispatched-screen" id="sosDispatchedInfo">
-                  <div class="blinking-alert">🚨 HELP REQUIRED 🚨</div>
-                  <p class="sms-log-alert">SMS sent to all Emergency Contacts!</p>
-                  <p class="gps-coordinates-label" id="sosGPSCoordinates">Location: 42.0012° N, 21.4316° E</p>
-                  <div class="emergency-help-card">
-                    <h3>I AM BLIND. PLEASE HELP.</h3>
-                    <p>Contact: <span id="sosPrimaryEmergencyContact">Mother (+389 70 123 456)</span></p>
+
+                <!-- Phase 2: Dispatched Card UI (Hidden by default) -->
+                <div class="sos-dispatched-screen" id="sosDispatchedInfo" style="display: none;">
+                  <div class="sos-beacon-card">
+                    <div class="sos-alert-header">
+                      <i class="fa-solid fa-triangle-exclamation"></i>
+                      <span>EMERGENCY ALERT</span>
+                    </div>
+                    
+                    <h1 class="sos-main-statement">I AM BLIND.<br>I NEED HELP.</h1>
+                    
+                    <p class="sos-sub-statement">Emergency SMS & GPS location dispatched.</p>
+                    
+                    <div class="sos-contact-box">
+                      <span class="contact-box-label">PLEASE CONTACT EMERGENCY NUMBER:</span>
+                      <h3 id="sosEmergencyContactDisplay" class="contact-box-number">Brother (+389 71 987 654)</h3>
+                    </div>
+
+                    <div class="sos-footer-hint">
+                      [ Hold Screen to Cancel Alarm ]
+                    </div>
                   </div>
                 </div>
               </div>
@@ -496,29 +593,26 @@
 
             <!-- Quick Access Swipe Down Overlay -->
             <div class="quick-access-overlay" id="quickAccessOverlay">
-              <div class="quick-access-panel">
-                <div class="qa-header">
-                  <i class="fa-solid fa-bolt"></i> Quick Access
-                </div>
-                <div class="qa-body" id="quickAccessItemsContainer">
-                  <!-- Custom items e.g., "Call Mother", "Navigate Home" -->
-                </div>
-                <div class="qa-footer">Swipe Up to Close</div>
+              <div class="qa-header">
+                <i class="fa-solid fa-bolt" style="color: #FFCC00;"></i>
+                <h2>QUICK ACCESS</h2>
+              </div>
+              <div class="qa-list-container" id="quickAccessListContainer"></div>
+              <div class="qa-footer-hint">
+                <span>[ Swipe Up/Down: Navigate • Double Tap: Execute • Long Press: Close ]</span>
               </div>
             </div>
 
-            <!-- Biometric Authentication overlay -->
+            <!-- Biometric Authentication Overlay (Full-Screen Touch Zone) -->
             <div class="biometric-overlay" id="biometricOverlay">
               <div class="biometric-modal">
-                <div class="bio-face-id" id="bioFaceIdIcon">
-                  <div class="face-frame"></div>
-                  <i class="fa-solid fa-smile-wink bio-scanner"></i>
+                <div class="bio-icon-circle">
+                  <i class="fa-solid fa-fingerprint bio-fingerprint-icon"></i>
                 </div>
-                <div class="bio-touch-id hidden" id="bioTouchIdIcon">
-                  <i class="fa-solid fa-fingerprint bio-scanner"></i>
-                </div>
-                <h3 id="bioPromptTitle">Confirm Identity</h3>
-                <p id="bioPromptText">Face ID Scanning...</p>
+                <h2 class="bio-touch-instruction">PLACE FINGER ANYWHERE ON SCREEN</h2>
+                <h3 class="bio-title" id="bioPromptTitle">Manage SOS Contacts</h3>
+                <p class="bio-description" id="bioPromptText">Biometric credential required to alter emergency contacts
+                  list.</p>
                 <div class="bio-buttons">
                   <button class="bio-btn success" id="btnSimulateBioSuccess">Succeed</button>
                   <button class="bio-btn fail" id="btnSimulateBioFail">Fail</button>
@@ -526,9 +620,21 @@
               </div>
             </div>
 
+            <!-- Global Swipe Navigation Area (hidden on welcome screen, visible on inner screens) -->
+            <div class="fixed-navigation-area" id="navigationArea" style="display: none;">
+              <div class="nav-indicator-line"></div>
+              <div class="nav-label">FIXED SWIPE NAVIGATION ZONE</div>
+            </div>
+
+            <!-- Global Fingerprint Sensor Area (only visible during biometric prompt) -->
+            <div class="fingerprint-sensor-area" id="globalFingerprintSensor">
+              <div class="fingerprint-scanner-ring">
+                <i class="fa-solid fa-fingerprint fingerprint-icon"></i>
+              </div>
+              <span class="fingerprint-label">FINGERPRINT SCANNER</span>
+            </div>
           </div>
         </div>
-      </div>
     </section>
 
     <!-- RIGHT: Simulator Dashboard -->
@@ -545,7 +651,7 @@
             </div>
             <div class="vibration-symbol-log" id="vibeSymbolText">No signal</div>
           </div>
-          
+
           <div class="visualizer-box">
             <span class="vis-title">Text-To-Speech (TTS) Log</span>
             <div class="tts-terminal">
@@ -563,7 +669,8 @@
       <!-- Section 2: Sensor & Gesture Simulator Controls -->
       <div class="panel-card sensors-card">
         <h2><i class="fa-solid fa-gamepad"></i> Hardware & Gesture Simulator</h2>
-        <p class="panel-desc">Simulate physical gestures and phone sensors that would normally trigger in a mobile app:</p>
+        <p class="panel-desc">Simulate physical gestures and phone sensors that would normally trigger in a mobile app:
+        </p>
         <div class="control-grids">
           <div class="ctrl-group">
             <h3>Physical Inputs</h3>
@@ -574,6 +681,9 @@
               <button class="ctrl-btn" id="btnSimulateBioLock">
                 <i class="fa-solid fa-fingerprint"></i> Lock w/ Biometrics
               </button>
+              <button class="ctrl-btn" id="btnSimulateIncomingCall">
+                <i class="fa-solid fa-phone-incoming"></i> Simulate Incoming Call
+              </button>
             </div>
           </div>
 
@@ -581,12 +691,15 @@
             <h3>Manual Gestures</h3>
             <div class="button-grid">
               <button class="ctrl-btn" id="btnSimulateSwipeL"><i class="fa-solid fa-arrow-left"></i> Swipe Left</button>
-              <button class="ctrl-btn" id="btnSimulateSwipeR"><i class="fa-solid fa-arrow-right"></i> Swipe Right</button>
+              <button class="ctrl-btn" id="btnSimulateSwipeR"><i class="fa-solid fa-arrow-right"></i> Swipe
+                Right</button>
               <button class="ctrl-btn" id="btnSimulateSwipeU"><i class="fa-solid fa-arrow-up"></i> Swipe Up</button>
               <button class="ctrl-btn" id="btnSimulateSwipeD"><i class="fa-solid fa-arrow-down"></i> Swipe Down</button>
               <button class="ctrl-btn" id="btnSimulateTap"><i class="fa-solid fa-hand-pointer"></i> Tap</button>
-              <button class="ctrl-btn" id="btnSimulateDblTap"><i class="fa-solid fa-circle-play"></i> Double Tap</button>
-              <button class="ctrl-btn" id="btnSimulateLongPress"><i class="fa-solid fa-hourglass-start"></i> Long Press</button>
+              <button class="ctrl-btn" id="btnSimulateDblTap"><i class="fa-solid fa-circle-play"></i> Double
+                Tap</button>
+              <button class="ctrl-btn" id="btnSimulateLongPress"><i class="fa-solid fa-hourglass-start"></i> Long
+                Press</button>
             </div>
           </div>
 
@@ -612,25 +725,28 @@
       <div class="panel-card logs-card">
         <h2><i class="fa-solid fa-rectangle-list"></i> System Logs & Network Activity</h2>
         <div class="logs-console" id="systemLogsConsole">
-          <div class="log-entry system">[SYSTEM] BlindTouch simulator initialized.</div>
+          <div class="log-entry system">[SYSTEM] BlindEye simulator initialized.</div>
           <div class="log-entry system">[SYSTEM] LocalStorage database loaded.</div>
           <div class="log-entry system">[SYSTEM] Audio and speech systems loaded.</div>
         </div>
       </div>
-    </main>
+  </main>
 
-    <footer class="app-footer-bar">
-      <p>BlindTouch Accessibility Simulator. Designed in HTML5, CSS3, and ES6 JavaScript.</p>
-    </footer>
+  <footer class="app-footer-bar">
+    <p>BlindEye Accessibility Simulator. Designed in HTML5, CSS3, and ES6 JavaScript.</p>
+  </footer>
 
-    <!-- Audio Elements for Haptic sound effects -->
-    <audio id="soundBeepShort" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav" preload="auto"></audio>
-    <audio id="soundBeepLong" src="https://assets.mixkit.co/active_storage/sfx/911/911-84.wav" preload="auto"></audio>
-    <audio id="soundSiren" src="https://assets.mixkit.co/active_storage/sfx/967/967-84.wav" preload="auto" loop></audio>
-    <audio id="soundCallRinging" src="https://assets.mixkit.co/active_storage/sfx/1633/1633-84.wav" preload="auto" loop></audio>
-    <audio id="soundCallConnected" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav" preload="auto"></audio>
+  <!-- Audio Elements for Haptic sound effects -->
+  <audio id="soundBeepShort" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-84.wav" preload="auto"></audio>
+  <audio id="soundBeepLong" src="https://assets.mixkit.co/active_storage/sfx/911/911-84.wav" preload="auto"></audio>
+  <audio id="soundSiren" src="https://assets.mixkit.co/active_storage/sfx/967/967-84.wav" preload="auto" loop></audio>
+  <audio id="soundCallRinging" src="https://assets.mixkit.co/active_storage/sfx/1633/1633-84.wav" preload="auto"
+    loop></audio>
+  <audio id="soundCallConnected" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav"
+    preload="auto"></audio>
   </div>
 
   <script src="app.js"></script>
 </body>
+
 </html>
