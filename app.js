@@ -7,7 +7,15 @@
 // 1. DATABASE & MOCK STATE
 // ==========================================
 
+/**
+ * Increment this integer whenever INITIAL_DB gains a new top-level key
+ * or a new nested settings field. The migration function will forward-fill
+ * missing fields from INITIAL_DB so existing saved data is never lost.
+ */
+const DB_SCHEMA_VERSION = 2;
+
 const INITIAL_DB = {
+  _version: DB_SCHEMA_VERSION,
   settings: {
     readingMode: 'voice', // 'voice', 'morse', 'combined'
     privacyMode: 'auto', // 'auto', 'off'
@@ -22,9 +30,9 @@ const INITIAL_DB = {
     { id: 5, name: 'Ana Friend', phone: '+389 75 444 888', favorite: false, emergency: false }
   ],
   messages: [
-    { id: 1, senderId: 1, senderName: 'Mother', text: 'Здраво, каде си? Дојди си дома.', unread: true, time: '12:05' },
-    { id: 2, senderId: 2, senderName: 'Brother', text: 'Ќе доцнам 10 минути, купи леб.', unread: false, time: '11:42' },
-    { id: 3, senderId: 3, senderName: 'Doctor', phone: '+389 72 555 112', text: 'Вашиот термин е потврден за утре во 9 часот.', unread: false, time: 'Yesterday' }
+    { id: 1, senderId: 1, senderName: 'Mother', text: 'Hi, where are you? When are you coming home?', unread: true, time: '12:05' },
+    { id: 2, senderId: 2, senderName: 'Brother', text: 'I will be 10 minutes late, buy some bread.', unread: false, time: '11:42' },
+    { id: 3, senderId: 3, senderName: 'Doctor', phone: '+389 72 555 112', text: 'Your appointment is tomorrow at 9 AM.', unread: false, time: 'Yesterday' }
   ],
   recentCalls: [
     { id: 1, name: 'Mother', type: 'received', time: '10:30 AM' },
@@ -38,9 +46,37 @@ const INITIAL_DB = {
   tutorialCompleted: false
 };
 
+/**
+ * Forward-fill any fields that exist in INITIAL_DB but are absent from
+ * the saved DB (happens when a new schema version adds fields).
+ * Never deletes user data — only adds missing keys.
+ */
+function migrateDb(saved) {
+  // Migrate top-level keys
+  for (const key of Object.keys(INITIAL_DB)) {
+    if (saved[key] === undefined) {
+      saved[key] = JSON.parse(JSON.stringify(INITIAL_DB[key]));
+      console.info(`[DB migration] Added missing key: "${key}"`);
+    }
+  }
+
+  // Migrate nested settings fields
+  if (saved.settings && INITIAL_DB.settings) {
+    for (const key of Object.keys(INITIAL_DB.settings)) {
+      if (saved.settings[key] === undefined) {
+        saved.settings[key] = INITIAL_DB.settings[key];
+        console.info(`[DB migration] Added missing settings.${key}`);
+      }
+    }
+  }
+
+  saved._version = DB_SCHEMA_VERSION;
+  return saved;
+}
+
 // State Manager
 let state = {
-  db: JSON.parse(localStorage.getItem('blindtouch_db')) || INITIAL_DB,
+  db: null, // populated by loadDb() below
   currentScreen: 'welcomeScreen',
   currentSubScreen: null, // e.g. 'contactsView'
   focusedIndex: 0,
@@ -64,18 +100,30 @@ let state = {
 
 // Database helper functions
 function loadDb() {
-  const data = localStorage.getItem('blindtouch_db');
-  if (data) {
+  const raw = localStorage.getItem('blindtouch_db');
+  if (raw) {
     try {
-      state.db = JSON.parse(data);
+      const parsed = JSON.parse(raw);
+      // Run migration if saved version is behind current schema
+      if (!parsed._version || parsed._version < DB_SCHEMA_VERSION) {
+        console.info(`[DB] Migrating from schema v${parsed._version || 0} → v${DB_SCHEMA_VERSION}`);
+        state.db = migrateDb(parsed);
+        saveDb(); // persist migrated data immediately
+      } else {
+        state.db = parsed;
+      }
     } catch (e) {
-      console.error('Failed to parse DB from localStorage:', e);
-      state.db = INITIAL_DB;
+      console.error('[DB] Corrupt localStorage data — resetting to INITIAL_DB:', e);
+      state.db = JSON.parse(JSON.stringify(INITIAL_DB));
+      saveDb();
     }
   } else {
-    state.db = INITIAL_DB;
+    state.db = JSON.parse(JSON.stringify(INITIAL_DB));
   }
 }
+
+// Bootstrap: load DB immediately so state.db is always populated
+loadDb();
 
 function saveDb() {
   localStorage.setItem('blindtouch_db', JSON.stringify(state.db));
@@ -93,6 +141,7 @@ window.resetAppOnboarding = function () {
   location.reload();
 };
 
+
 // Logging helper for dashboard
 function logSystem(text, type = 'system') {
   const consoleLog = document.getElementById('systemLogsConsole');
@@ -103,6 +152,15 @@ function logSystem(text, type = 'system') {
   entry.innerText = `[${timestamp}] ${text}`;
   consoleLog.appendChild(entry);
   consoleLog.scrollTop = consoleLog.scrollHeight;
+}
+
+function formatPhoneNumberForSpeech(phone) {
+  if (!phone) return '';
+  return phone.split('').map(char => {
+    if (char === '+') return 'plus ';
+    if (/\d/.test(char)) return char + ' ';
+    return char;
+  }).join('');
 }
 
 // ==========================================
@@ -137,12 +195,27 @@ const Speech = {
 
     utterance.rate = 1.0;
     window.speechSynthesis.speak(utterance);
+
+    // --- ARIA LIVE REGION MIRROR ---
+    // Mirrors the announcement into a visually-hidden assertive ARIA region so
+    // that native screen readers (TalkBack / VoiceOver) can announce the text
+    // through their own pipeline without competing with speechSynthesis.
+    const announcer = document.getElementById('accessibilityAnnouncer');
+    if (announcer) {
+      // Clear first (in the same frame) then set in the next frame so that
+      // repeated identical strings still trigger a screen reader announcement.
+      announcer.textContent = '';
+      requestAnimationFrame(() => {
+        announcer.textContent = text;
+      });
+    }
   },
 
   stop: function () {
     window.speechSynthesis.cancel();
   }
 };
+
 
 // Toggle mute button
 const btnToggleSpeech = document.getElementById('btnToggleSpeech');
@@ -312,8 +385,84 @@ const MORSE_MAP = {
 
 const DECODE_MORSE_MAP = Object.fromEntries(Object.entries(MORSE_MAP).map(([k, v]) => [v, k]));
 
+// ---------------------------------------------------------------------------
+// MORSE VIBRATION TIMING CONSTANTS
+// DOT  = 100ms on | DASH = 300ms on | inter-symbol gap = 100ms off
+// inter-letter gap = 300ms off | inter-word gap = 700ms off
+// These match ITU-R M.1677-1 standard timing ratios (1 : 3 : 1 : 3 : 7)
+// ---------------------------------------------------------------------------
+const MORSE_VIBE = {
+  DOT: 100,
+  DASH: 300,
+  SYM_GAP: 100,   // gap between dots/dashes within one letter
+  LETTER_GAP: 300,   // gap between letters
+  WORD_GAP: 700,   // gap between words
+};
+
+const MORSE_INPUT = {
+  DOT_THRESHOLD: 250,
+  DASH_THRESHOLD: 600
+};
+
+/**
+ * Build a navigator.vibrate()-compatible [on, off, on, off ...] array
+ * from a plain text string, using the MORSE_MAP lookup table.
+ * Returns an empty array for strings with no recognised characters.
+ */
+function buildMorseVibratePattern(str) {
+  const pattern = [];
+  const words = str.toUpperCase().split(' ');
+
+  words.forEach((word, wi) => {
+    for (let ci = 0; ci < word.length; ci++) {
+      const code = MORSE_MAP[word[ci]];
+      if (!code) continue;
+
+      for (let si = 0; si < code.length; si++) {
+        const pulse = code[si] === '.' ? MORSE_VIBE.DOT : MORSE_VIBE.DASH;
+        pattern.push(pulse);
+        // Add inter-symbol gap after every pulse except the last in the letter
+        if (si < code.length - 1) pattern.push(MORSE_VIBE.SYM_GAP);
+      }
+      // After each letter (except the last in a word): inter-letter gap
+      if (ci < word.length - 1) pattern.push(MORSE_VIBE.LETTER_GAP);
+    }
+    // After each word (except the last): inter-word gap
+    if (wi < words.length - 1) pattern.push(MORSE_VIBE.WORD_GAP);
+  });
+
+  return pattern;
+}
+
+/**
+ * Play a Morse haptic sequence for a text string.
+ *
+ * Behaviour depends on user's reading mode and device capability:
+ *  - If navigator.vibrate is supported AND readingMode includes 'morse':
+ *      → fires a single atomic vibration pattern (true motor output for deaf-blind).
+ *      → ALSO runs the visual simulator timeline (for sighted demo observers).
+ *  - Otherwise:
+ *      → runs only the visual/audio simulator timeline (original behaviour).
+ *
+ * The onComplete callback fires after the visual timeline finishes so that
+ * callers (TTS chaining etc.) continue at the right moment regardless of path.
+ */
 function playMorseString(str, onComplete = null) {
   state.speechEnabled = false;
+
+  // --- DEAF-BLIND PATH: single atomic motor vibration pattern ---
+  const readingMode = (state.db && state.db.settings && state.db.settings.readingMode) || 'voice';
+  const isMorseMode = (readingMode === 'morse' || readingMode === 'combined');
+
+  if (isMorseMode && navigator.vibrate) {
+    const pattern = buildMorseVibratePattern(str);
+    if (pattern.length > 0) {
+      navigator.vibrate(pattern);
+      logSystem(`Morse motor vibration: "${str}" (${pattern.length} pulses)`, 'action');
+    }
+  }
+
+  // --- SIMULATOR VISUAL/AUDIO TIMELINE (always runs for UI feedback) ---
   const words = str.toUpperCase().split(' ');
   let timeline = [];
 
@@ -341,6 +490,9 @@ function playMorseString(str, onComplete = null) {
 
     const step = timeline[index++];
     if (step.type === 'short' || step.type === 'long') {
+      // In morse mode the motor vibration is already running atomically above;
+      // call Haptic.trigger for the visual ripple animation only (sound is muted
+      // for deaf-blind users anyway via isMuted or readingMode check).
       Haptic.trigger(step.type);
       setTimeout(nextPulse, step.type === 'short' ? 250 : 650);
     } else if (step.type === 'pause-letter') {
@@ -425,8 +577,9 @@ const GestureManager = {
 
     const skipTutBtn = document.getElementById('skipTutorialBtn');
     if (skipTutBtn) {
-      skipTutBtn.addEventListener('click', () => {
-        state.db.tutorialCompleted = true;
+      skipTutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (state.db) state.db.tutorialCompleted = true;
         localStorage.setItem('blindEye_tutorialCompleted', 'true');
         saveDb();
         navigateTo('mainMenuScreen');
@@ -443,7 +596,12 @@ const GestureManager = {
 
     let lastShakeTime = 0;
     let shakeCount = 0;
+    let firstShakeTime = 0;        // timestamp of the first shake in a pair
     let lastX = null, lastY = null, lastZ = null;
+
+    // After SOS triggers or is cancelled, block re-trigger for this many ms.
+    // Stored on state so cancelSOS() can also reset it.
+    state._sosCooldownUntil = 0;
 
     window.addEventListener('devicemotion', (e) => {
       const acc = e.accelerationIncludingGravity;
@@ -456,23 +614,44 @@ const GestureManager = {
 
         if (deltaX + deltaY + deltaZ > 25) {
           const now = Date.now();
-          if (now - lastShakeTime < 800) {
-            shakeCount++;
-            if (shakeCount >= 2) {
+
+          // Respect cooldown period after a previous SOS trigger or cancel
+          if (now < state._sosCooldownUntil) {
+            lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+            return;
+          }
+
+          if (shakeCount === 0) {
+            // Record the very first shake
+            shakeCount = 1;
+            firstShakeTime = now;
+            lastShakeTime = now;
+          } else if (shakeCount === 1) {
+            // Second shake must arrive:
+            //  • within 800ms of the first (double-shake window)
+            //  • at least 150ms after the first (prevents single jerk double-counting)
+            const sinceFirst = now - firstShakeTime;
+            const sinceLastPeak = now - lastShakeTime;
+
+            if (sinceFirst < 800 && sinceLastPeak >= 150) {
               shakeCount = 0;
+              state._sosCooldownUntil = now + 10000; // 10-second cooldown
               logSystem('Physical device double-shake detected!', 'action');
               triggerSOS();
+            } else if (sinceFirst >= 800) {
+              // Window expired — treat this as a new first shake
+              shakeCount = 1;
+              firstShakeTime = now;
             }
-          } else {
-            shakeCount = 1;
+            lastShakeTime = now;
           }
-          lastShakeTime = now;
         }
       }
       lastX = acc.x;
       lastY = acc.y;
       lastZ = acc.z;
     });
+
   },
 
   start: function (x, y) {
@@ -575,7 +754,7 @@ const GestureManager = {
     const phoneEl = document.getElementById('phoneScreen');
     if (phoneEl && x !== undefined && y !== undefined) {
       const rect = phoneEl.getBoundingClientRect();
-      
+
       // Calculate relative X and Y inside the phone screen container
       const relX = x - rect.left;
       const relY = y - rect.top;
@@ -594,7 +773,7 @@ const GestureManager = {
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           Speech.speak("Current time is " + timeStr);
           return;
-        } 
+        }
         else if ((gesture === 'doubleTap' || gesture === 'tripleTap') && isTopRight) {
           Haptic.trigger('success');
           if ('getBattery' in navigator) {
@@ -653,7 +832,7 @@ const GestureManager = {
       if (this.isTwoFingerGesture && state.currentScreen !== 'tutorialScreen' && state.currentScreen !== 'welcomeScreen') {
         Haptic.trigger('success');
         toggleQuickAccess(true);
-        Speech.speak("Quick Access active.");
+        // Note: toggleQuickAccess() already announces the first item + count via Speech.speak()
       }
       return;
     }
@@ -714,9 +893,24 @@ function handleWelcomeGesture(gesture) {
   }
 }
 
-// ==========================================
-// 6. HEURISTIC HANDWRITING RECOGNIZER
-// ==========================================
+function handleTutorialGesture(gesture) {
+  // Long press: skip calibration and switch to voice-only mode
+  if (gesture === 'longPress') {
+    Haptic.trigger('long');
+    skipCalibrationToVoiceMode();
+    return;
+  }
+  // Any other gesture: re-announce the current calibration step
+  const currentLetter = CALIBRATION_LETTERS[calibrationState.letterIdx] || 'M';
+  const count = calibrationState.count || 1;
+  if (gesture === 'doubleTap') {
+    Haptic.trigger('short');
+    Speech.speak(`Draw letter ${currentLetter}, ${count} of 3. Long press at any time to skip to voice-only mode.`);
+  } else {
+    Haptic.trigger('short');
+    Speech.speak(`Draw letter ${currentLetter} on the canvas.`);
+  }
+}
 
 // ==========================================
 // 6. HEURISTIC HANDWRITING RECOGNIZER
@@ -786,8 +980,30 @@ const Handwriting = {
   resizeCanvas: function (canvas) {
     if (!canvas) canvas = this.activeCanvas;
     if (!canvas) return;
-    canvas.width = canvas.offsetWidth || 320;
-    canvas.height = canvas.offsetHeight || 500;
+
+    // Bug fix: If layout hasn't run yet (offsetWidth is 0), defer execution to the next frame
+    // to obtain the true CSS computed size. Limit to 10 attempts to prevent infinite loops.
+    if (canvas.offsetWidth === 0) {
+      if (!canvas._resizeAttempts) canvas._resizeAttempts = 0;
+      if (canvas._resizeAttempts < 10) {
+        canvas._resizeAttempts++;
+        requestAnimationFrame(() => this.resizeCanvas(canvas));
+        return;
+      }
+    }
+    canvas._resizeAttempts = 0;
+
+    // Bug fix #5: Scale canvas backing buffer by devicePixelRatio for crisp strokes on
+    // Retina / high-DPI displays. The CSS size stays the same; only the pixel buffer grows.
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.offsetWidth || 292; // Default to 292 (padded content width of 360px screen)
+    const cssHeight = canvas.offsetHeight || 340; // Default to 340
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
     this.clearCanvas(canvas);
   },
 
@@ -983,7 +1199,10 @@ function recognizeHeuristicLetter(normPts, ar, startP, endP) {
   if (startX > 0.4 && endX > 0.4) return 'C';
   if (startX > 0.4 && endX < 0.5) return 'S';
 
-  return 'P';
+  // Bug fix #1: Return null for genuinely unrecognized strokes instead of defaulting
+  // to 'P'. The caller (handleMainMenuHandwriting) handles null by playing an error haptic
+  // and speaking "Letter not recognized" — much better than silently opening Phone.
+  return null;
 }
 
 function recognizeMainMenuLetter(pts) {
@@ -1067,6 +1286,40 @@ function navigateTo(screenId, subScreenId = null) {
     clearTimeout(welcomeTimer);
     welcomeTimer = null;
   }
+  if (typeof routingSimulationTimer !== 'undefined' && routingSimulationTimer) {
+    clearInterval(routingSimulationTimer);
+    routingSimulationTimer = null;
+  }
+  if (typeof incomingCallInterval !== 'undefined' && incomingCallInterval) {
+    clearInterval(incomingCallInterval);
+    incomingCallInterval = null;
+  }
+  if (state.callTimerInterval) {
+    clearInterval(state.callTimerInterval);
+    state.callTimerInterval = null;
+  }
+  if (state.tapTimer) {
+    clearTimeout(state.tapTimer);
+    state.tapTimer = null;
+  }
+  if (typeof morseTimer !== 'undefined' && morseTimer) {
+    clearTimeout(morseTimer);
+    morseTimer = null;
+  }
+  if (typeof navMorseTimer !== 'undefined' && navMorseTimer) {
+    clearTimeout(navMorseTimer);
+    navMorseTimer = null;
+  }
+
+  // Silence active call audio if exiting call screens
+  if (screenId !== 'activeCallScreen' && screenId !== 'incomingCallScreen') {
+    try {
+      const ringSound = document.getElementById('soundCallRinging');
+      const connSound = document.getElementById('soundCallConnected');
+      if (ringSound) ringSound.pause();
+      if (connSound) connSound.pause();
+    } catch (e) { }
+  }
 
   if (state.isCameraActive && screenId !== 'cameraScreen') {
     stopWebcam();
@@ -1079,6 +1332,7 @@ function navigateTo(screenId, subScreenId = null) {
     s.style.display = 'none';
   });
 
+  state.previousScreen = state.currentScreen;
   state.currentScreen = screenId;
   state.currentSubScreen = subScreenId;
 
@@ -1129,9 +1383,8 @@ function navigateTo(screenId, subScreenId = null) {
 function updatePrivacyScreenState() {
   const overlay = document.getElementById('privacyOverlay');
   if (!overlay) return;
-  const messagePrivacySubScreens = ['msgDetailView', 'msgReplyView', 'msgMorseInputView', 'msgSttView', 'msgQuickRepliesView'];
-  const isPrivateScreen = (state.currentScreen === 'messagesScreen' && messagePrivacySubScreens.includes(state.currentSubScreen)) ||
-    (state.currentScreen === 'settingsScreen' && state.currentSubScreen === 'emergencySettingsView');
+  const messagePrivacySubScreens = ['msgReplyView', 'msgMorseInputView', 'msgSttView', 'msgQuickRepliesView'];
+  const isPrivateScreen = (state.currentScreen === 'messagesScreen' && messagePrivacySubScreens.includes(state.currentSubScreen));
 
   if (isPrivateScreen && (state.db.settings.privacyMode === 'auto' || state.db.settings.privacyMode === 'always on' || state.db.settings.privacyMode === 'on')) {
     overlay.classList.add('active');
@@ -1141,7 +1394,12 @@ function updatePrivacyScreenState() {
 }
 
 function onScreenLoaded(screen, subScreen) {
-  state.focusedIndex = 0;
+  const menuSubScreens = ['callsMenuView', 'cameraMenuView', 'navMenuView', 'settingsMenuView'];
+
+  // Only reset focusedIndex to 0 if entering a non-menu screen or switching to a new top-level module
+  if (!menuSubScreens.includes(subScreen) && state.previousScreen !== screen) {
+    state.focusedIndex = 0;
+  }
 
   if (screen === 'welcomeScreen') {
     const isCompleted = state.db.tutorialCompleted || localStorage.getItem('blindEye_tutorialCompleted') === 'true';
@@ -1156,7 +1414,7 @@ function onScreenLoaded(screen, subScreen) {
 
       welcomeTimer = setTimeout(() => {
         navigateTo('mainMenuScreen');
-      }, 3000);
+      }, 2000);
     }
   }
   else if (screen === 'tutorialScreen') {
@@ -1166,7 +1424,7 @@ function onScreenLoaded(screen, subScreen) {
     renderMainMenu();
   }
   else if (screen === 'messagesScreen') {
-    if (subScreen === 'msgThreadsView') renderMessageThreads();
+    if (subScreen === 'msgThreadsView') renderMessagesList();
     else if (subScreen === 'msgDetailView') renderMessageDetail();
     else if (subScreen === 'msgReplyView') renderReplyScreen();
     else if (subScreen === 'msgQuickRepliesView') renderQuickReplies();
@@ -1183,7 +1441,7 @@ function onScreenLoaded(screen, subScreen) {
       state.dialedNumber = '';
       const dialerLog = document.getElementById('dialerNumberLog');
       if (dialerLog) dialerLog.innerText = 'Draw number...';
-      Handwriting.clearCanvas();
+      Handwriting.initCanvas('handwritingCanvas');
       Speech.speak('Dialer active. Draw digits on canvas. Double tap bottom to place call.');
     }
   }
@@ -1223,19 +1481,40 @@ const CALIBRATION_LETTERS = ['M', 'P', 'C', 'N', 'S'];
 let calibrationState = {
   letterIdx: 0,
   count: 1,
-  samples: []
+  samples: [],
+  failCount: 0  // consecutive tiny/failed strokes for current letter
 };
 
 function startTutorial() {
   calibrationState = {
     letterIdx: 0,
     count: 1,
-    samples: []
+    samples: [],
+    failCount: 0
   };
-  if (!state.db.letterProfiles) state.db.letterProfiles = {};
+  if (!state.db) state.db = {};
+  state.db.letterProfiles = {};
 
   navigateTo('tutorialScreen');
   initTutorialCalibration();
+}
+
+/**
+ * Skip handwriting calibration and go straight to voice-primary mode.
+ * Called automatically after repeated tiny/invalid strokes, or by the
+ * user explicitly (e.g. long press during calibration).
+ */
+function skipCalibrationToVoiceMode() {
+  Speech.speak("Voice-primary mode activated. Handwriting calibration skipped. Opening Main Menu.");
+  Haptic.trigger('success');
+  state.db.tutorialCompleted = true;
+  localStorage.setItem('blindEye_tutorialCompleted', 'true');
+  // Clear any partial letter profiles so heuristic fallback is used
+  state.db.letterProfiles = {};
+  saveDb();
+  setTimeout(() => {
+    navigateTo('mainMenuScreen');
+  }, 1800);
 }
 
 function initTutorialCalibration() {
@@ -1251,10 +1530,10 @@ function updateTutorialCalibrationUI(announceSpeech = true) {
   const instructionEl = document.getElementById('tutorialInstructionText');
 
   if (counterEl) counterEl.innerText = `Draw letter ${currentLetter} [ ${count} / 3 ]`;
-  if (instructionEl) instructionEl.innerText = `Calibrating ${currentLetter} stroke profile`;
+  if (instructionEl) instructionEl.innerText = `Swipe / Draw letter ${currentLetter} to teach the system your style`;
 
   if (announceSpeech) {
-    Speech.speak(`Handwriting calibration. Draw letter ${currentLetter} ${count} of 3.`);
+    Speech.speak(`Tutorial Calibration. Draw letter ${currentLetter}, ${count} of 3.`);
   }
 }
 
@@ -1272,25 +1551,30 @@ function handleTutorialCalibrationStroke(pts) {
 
   const w = maxX - minX;
   const h = maxY - minY;
-  const ar = h / (w || 1);
 
+  // Reject micro taps
+  if (w < 10 && h < 10) {
+    Haptic.trigger('error');
+    Speech.speak(`Stroke too small. Please draw letter ${currentLetter} clearly on the screen.`);
+    return;
+  }
+
+  const ar = h / (w || 1);
   const normPts = pts.map(p => ({
     x: (p.x - minX) / (w || 1),
     y: (p.y - minY) / (h || 1)
   }));
-
   const resampled = resamplePoints(normPts, 20);
 
   calibrationState.samples.push({ ar, resampledPts: resampled });
-
   Haptic.trigger('success');
 
   if (count < 3) {
-    Speech.speak(`Letter ${currentLetter} calibrated ${count} of 3.`);
+    Speech.speak(`${currentLetter}, ${count} of 3 recorded.`);
     calibrationState.count++;
     updateTutorialCalibrationUI(false);
   } else {
-    // 3 samples complete for current letter!
+    // Save averaged profile after 3 samples
     const avgAr = calibrationState.samples.reduce((sum, s) => sum + s.ar, 0) / 3;
     const avgResampled = [];
     for (let i = 0; i < 20; i++) {
@@ -1299,10 +1583,8 @@ function handleTutorialCalibrationStroke(pts) {
       avgResampled.push({ x: avgX, y: avgY });
     }
 
-    state.db.letterProfiles[currentLetter] = {
-      ar: avgAr,
-      resampledPts: avgResampled
-    };
+    if (!state.db.letterProfiles) state.db.letterProfiles = {};
+    state.db.letterProfiles[currentLetter] = { ar: avgAr, resampledPts: avgResampled };
     saveDb();
 
     if (calibrationState.letterIdx < CALIBRATION_LETTERS.length - 1) {
@@ -1310,14 +1592,14 @@ function handleTutorialCalibrationStroke(pts) {
       calibrationState.count = 1;
       calibrationState.samples = [];
       const nextLetter = CALIBRATION_LETTERS[calibrationState.letterIdx];
-      Speech.speak(`Letter ${currentLetter} calibration complete. Now draw letter ${nextLetter}.`);
+      Speech.speak(`Letter ${currentLetter} learned successfully. Now draw letter ${nextLetter}.`);
       updateTutorialCalibrationUI(false);
     } else {
       state.db.tutorialCompleted = true;
       localStorage.setItem('blindEye_tutorialCompleted', 'true');
       saveDb();
 
-      Speech.speak("Handwriting calibration complete. Opening Main Menu.");
+      Speech.speak("All letters calibrated! Tutorial complete. Opening Main Menu.");
       setTimeout(() => {
         navigateTo('mainMenuScreen');
       }, 1500);
@@ -1339,30 +1621,53 @@ function renderMainMenu() {
   Speech.speak("Main Menu. Draw M for Messages, P for Phone, C for Camera, N for Navigation, or S for Settings.");
 }
 
+/**
+ * Announce that the user has hit the start or end of a list.
+ * Plays a double haptic pulse (stronger than a normal navigation step)
+ * and includes position in the speech so the user always knows where they are.
+ *
+ * @param {'first'|'last'} boundary
+ * @param {string} itemLabel - Human-readable name of the current item
+ * @param {number} total - Total number of items in the list
+ */
+function announceListBoundary(boundary, itemLabel, total) {
+  Haptic.trigger('success'); // double pulse — distinguishable from error (triple)
+  const pos = boundary === 'first' ? 1 : total;
+  const word = boundary === 'first' ? 'First' : 'Last';
+  Speech.speak(`${word} item. ${itemLabel}. ${pos} of ${total}.`);
+}
+
 function speakFocusedItem() {
   const item = state.focusedItems[state.focusedIndex];
   if (!item) return;
 
   Haptic.trigger(item.pattern || 'short');
 
+  const idx = state.focusedIndex + 1;
+  const total = state.focusedItems.length;
+  const pos = total > 1 ? `, ${idx} of ${total}` : '';
+
   if (state.currentScreen === 'mainMenuScreen') {
-    Speech.speak(item.name);
+    Speech.speak(`${item.name}${pos}`);
   } else if (state.currentScreen === 'messagesScreen') {
     if (state.currentSubScreen === 'msgThreadsView') {
-      Speech.speak(`Message from ${item.senderName}. ${item.unread ? 'Unread message.' : 'Read message.'}`);
+      const status = item.unread ? 'Unread.' : 'Read.';
+      Speech.speak(`${item.senderName}. ${status}${pos}`);
     } else {
-      Speech.speak(item.name || item.text);
+      Speech.speak(`${item.name || item.text}${pos}`);
     }
   } else if (state.currentScreen === 'callsScreen') {
     if (state.currentSubScreen === 'contactsView') {
-      Speech.speak(`${item.name}, ${item.phone}`);
+      Speech.speak(`${item.name}, ${formatPhoneNumberForSpeech(item.phone)}${pos}`);
     } else {
-      Speech.speak(item.name || item.text);
+      Speech.speak(`${item.name || item.text}${pos}`);
     }
   } else {
-    Speech.speak(item.name || item.text || 'Menu Option');
+    Speech.speak(`${item.name || item.text || 'Menu Option'}${pos}`);
   }
 }
+
+
 
 function handleMainMenuGesture(gesture) {
   if (gesture === 'swipeRight') {
@@ -1384,62 +1689,93 @@ function handleMainMenuGesture(gesture) {
 }
 
 // --- Messages ---
-function renderMessageThreads() {
-  const container = document.getElementById('msgThreadsContainer');
+function renderMessagesList() {
+  const container = document.getElementById('msgListContainer');
   if (!container) return;
+
+  // Force container to fill available vertical space and center content
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.justifyContent = 'center';
+  container.style.alignItems = 'center';
+  container.style.height = 'calc(100% - 120px)';
+  container.style.width = '100%';
+  container.style.boxSizing = 'border-box';
+  container.style.margin = 'auto 0';
   container.innerHTML = '';
 
-  state.focusedItems = state.db.messages;
-  const total = state.focusedItems.length;
+  const messages = (state.db && state.db.messages) ? state.db.messages : [];
+  state.focusedItems = messages;
+  const total = messages.length;
 
   if (total === 0) {
     container.innerHTML = `
-      <div class="single-focus-msg-card focused">
-        <div class="msg-card-top-bar">
-          <span></span>
-          <span class="msg-counter-badge">[ 0 / 0 ]</span>
+      <div class="hero-card" style="width: calc(100% - 32px); max-height: 260px; border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 24px 18px; background: #000000; margin: auto;">
+        <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: #FFCC00; font-weight: bold; font-size: 0.9rem;">[ MESSAGES ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 0 / 0 ]</span>
         </div>
-        <div class="msg-sender-info">
-          <i class="fa-solid fa-comment-sms sender-envelope-icon"></i>
-          <span class="msg-sender-name">No Messages</span>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin: auto 0; text-align: center;">
+          <h2 style="color: #FFCC00; font-size: 1.5rem; margin: 0; font-weight: 800;">NO MESSAGES</h2>
         </div>
-        <div class="msg-snippet-box">
-          <p class="msg-snippet-text">No messages in inbox</p>
-        </div>
-      </div>`;
-    speakFocusedItem();
+      </div>
+    `;
+    Speech.speak("No messages in inbox.");
     return;
   }
 
-  const msg = state.focusedItems[state.focusedIndex];
-  const snippet = msg.text.length > 25 ? msg.text.substring(0, 25) + '...' : msg.text;
-  const time = msg.time || '14:25';
-  const status = msg.unread ? 'Unread' : 'Read';
+  if (state.focusedIndex >= total) state.focusedIndex = 0;
+  const current = messages[state.focusedIndex];
 
-  const card = document.createElement('div');
-  card.className = 'single-focus-msg-card focused';
-  card.innerHTML = `
-    <div class="msg-card-top-bar">
-      ${msg.unread ? '<span class="msg-unread-tag"><i class="fa-solid fa-circle"></i> NEW</span>' : '<span></span>'}
-      <span class="msg-counter-badge">[ ${state.focusedIndex + 1} / ${total} ]</span>
+  container.innerHTML = `
+    <div class="hero-card" style="width: calc(100% - 32px); height: auto; border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+      
+      <!-- Header: Sender Info & Item Counter -->
+      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+          <i class="fa-solid fa-circle-user" style="color: #FFCC00; font-size: 1.8rem; flex-shrink: 0;"></i>
+          <span style="color: #FFCC00; font-weight: 800; font-size: 1.5rem; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            ${current.senderName}
+          </span>
+        </div>
+        <span style="color: #FFFFFF; font-weight: bold; font-size: 1.1rem; white-space: nowrap; flex-shrink: 0;">
+          [ ${state.focusedIndex + 1} / ${total} ]
+        </span>
+      </div>
+
+      <!-- Timestamp & Status Badge Row -->
+      <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 204, 0, 0.05); border: 1px solid #333; border-radius: 12px; padding: 12px 14px; box-sizing: border-box;">
+        <span style="color: #FFFFFF; font-size: 0.95rem; font-weight: 700; font-family: monospace;">
+          <i class="fa-regular fa-clock" style="color: #FFCC00; margin-right: 6px;"></i>${current.timestamp || '12:05'}
+        </span>
+        <span style="font-size: 0.8rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; ${current.unread ? 'background: #FFCC00; color: #000000;' : 'background: #222222; color: #888888; border: 1px solid #444;'}">
+          ${current.unread ? 'UNREAD' : 'READ'}
+        </span>
+      </div>
+
     </div>
-    <div class="msg-sender-info">
-      <i class="fa-solid fa-user-circle sender-envelope-icon"></i>
-      <span class="msg-sender-name">${msg.senderName}</span>
+
+    <!-- Carousel Indicators -->
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0;">
+      ${messages.map((_, idx) => `
+        <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+      `).join('')}
     </div>
-    <div class="msg-snippet-box">
-      <p class="msg-snippet-text">"${snippet}"</p>
-    </div>
-    <div class="msg-card-footer-hint">${time} • ${status}</div>
   `;
 
-  container.appendChild(card);
-  speakFocusedItem();
+  const status = current.unread ? 'Unread.' : 'Read.';
+  Speech.speak(`Message ${state.focusedIndex + 1} of ${total}. From ${current.senderName}. ${status}`);
 }
 
 function getActiveMessage() {
-  const idx = state.selectedMsgIndex !== undefined ? state.selectedMsgIndex : (state.focusedIndex || 0);
-  return state.db.messages[idx] || state.db.messages[0] || { senderName: 'Mother', text: 'Здраво, каде си? Дојди си дома.' };
+  // Bug fix #4: selectedMsgIndex persists across navigations and can point to a stale
+  // message. Only use it when we are actually inside the messages screen; otherwise fall
+  // back to focusedIndex which is always reset correctly when entering a new screen.
+  const onMessagesScreen = state.currentScreen === 'messagesScreen';
+  const idx = (onMessagesScreen && state.selectedMsgIndex !== undefined)
+    ? state.selectedMsgIndex
+    : (state.focusedIndex || 0);
+  return state.db.messages[idx] || state.db.messages[0] || { senderName: 'Mother', text: 'Hi, where are you? When are you coming home?' };
 }
 
 let activeSpeechRecognition = null;
@@ -1459,24 +1795,38 @@ function renderMessageDetail() {
   const senderName = msg ? msg.senderName : 'Contact';
   const textContent = msg ? msg.text : '';
 
-  // Reset inline state
+  // Reset inline input buffers
   inlineMorseBuffer = '';
   inlineMorseText = '';
   inlineVoiceTranscript = '';
 
-  const titleEl = document.getElementById('privacyTitle');
-  if (titleEl) titleEl.innerText = 'PRIVACY MODE ACTIVE';
+  const container = document.getElementById('msgDetailContainer');
+  if (container) {
+    // Pure blackout UI — completely black background with no visible text cards for maximum privacy
+    container.innerHTML = `
+      <div class="privacy-blackout-card" style="width: 100%; height: 100%; background: #000000; display: flex; align-items: center; justify-content: center;">
+        <span class="sr-only">Privacy Screen Active. Screen is black.</span>
+      </div>
+    `;
+  }
 
-  const subtitleEl = document.getElementById('privacySubtitle');
-  if (subtitleEl) subtitleEl.innerText = 'Screen protected • Speak or tap to reply';
+  // Determine instruction based on settings
+  const readingMode = (state.db && state.db.settings && state.db.settings.readingMode) || 'combined';
+  let modeInstruction = "Speak or tap Morse code to reply.";
+  if (readingMode === 'morse') {
+    modeInstruction = "Tap Morse code on the screen to reply.";
+  } else if (readingMode === 'voice' || readingMode === 'tts only') {
+    modeInstruction = "Speak your reply after the tone.";
+  }
 
-  const iconEl = document.getElementById('privacyShieldIcon');
-  if (iconEl) iconEl.className = 'privacy-shield-icon';
+  // Speak message content via TTS
+  Speech.speak(`Message from ${senderName}: ${textContent}. ${modeInstruction} Swipe right to send, or long press to go back.`);
 
-  Speech.speak(`Privacy Mode active. Message from ${senderName}: ${textContent}. Speak or tap Morse code to reply, then swipe right to send. Long press to go back.`);
-
+  // Activate input listeners based on active settings
   initInlineMorseListeners();
-  startInlineVoiceListening();
+  if (readingMode !== 'morse') {
+    startInlineVoiceListening();
+  }
 }
 
 function startInlineVoiceListening() {
@@ -1492,15 +1842,19 @@ function startInlineVoiceListening() {
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    // Bug fix #6: Use Macedonian locale to match the app's TTS language.
+    // Falls back gracefully to English on browsers without mk-MK support.
+    recognition.lang = 'mk-MK';
 
     recognition.onspeechstart = () => {
       if (state.currentSubScreen === 'msgDetailView') {
         Haptic.trigger('short');
-        const subtitleEl = document.getElementById('privacySubtitle');
-        if (subtitleEl) subtitleEl.innerText = 'Listening to voice reply...';
-        const iconEl = document.getElementById('privacyShieldIcon');
-        if (iconEl) iconEl.className = 'privacy-shield-icon listening';
+        const badgeEl = document.getElementById('msgDetailStatusBadge');
+        if (badgeEl) {
+          badgeEl.innerText = 'LISTENING';
+          badgeEl.style.display = 'inline-block';
+          badgeEl.style.backgroundColor = '#00E5FF';
+        }
       }
     };
 
@@ -1511,9 +1865,9 @@ function startInlineVoiceListening() {
         transcript += event.results[i][0].transcript;
       }
       inlineVoiceTranscript = transcript;
-      const subtitleEl = document.getElementById('privacySubtitle');
-      if (subtitleEl && transcript) {
-        subtitleEl.innerText = `"${transcript}"`;
+      const footerEl = document.getElementById('msgDetailFooterHint');
+      if (footerEl && transcript) {
+        footerEl.innerText = `Voice: "${transcript}"`;
       }
     };
 
@@ -1527,45 +1881,65 @@ function initInlineMorseListeners() {
   const detailScreen = document.getElementById('msgDetailView');
   if (!detailScreen) return;
 
-  detailScreen.onmousedown = (e) => {
+  // Morse tap timing thresholds (ms)
+  // < 250ms  → dot (.)
+  // 250–599ms → dash (-)
+  // ≥ 600ms   → back navigation (handled by GestureManager, not here)
+  const DOT_THRESHOLD = MORSE_INPUT.DOT_THRESHOLD;
+  const BACK_THRESHOLD = MORSE_INPUT.DASH_THRESHOLD;
+
+  function onMorseTouchStart(e) {
     if (state.currentSubScreen !== 'msgDetailView') return;
     e.stopPropagation();
     inlineTouchStartTime = Date.now();
-  };
+  }
 
-  detailScreen.onmouseup = (e) => {
+  function onMorseTouchEnd(e) {
     if (state.currentSubScreen !== 'msgDetailView') return;
     e.stopPropagation();
     const duration = Date.now() - inlineTouchStartTime;
 
-    // Ignore long presses (> 600ms reserved for return to inbox)
-    if (duration >= 600) return;
+    // ≥ 600ms is reserved for the universal back gesture — ignore here
+    if (duration >= BACK_THRESHOLD) return;
 
     if (activeSpeechRecognition) {
       try { activeSpeechRecognition.stop(); } catch (err) { }
       activeSpeechRecognition = null;
     }
 
-    const symbol = duration < 300 ? '.' : '-';
+    const symbol = duration < DOT_THRESHOLD ? '.' : '-';
     inlineMorseBuffer += symbol;
 
-    const iconEl = document.getElementById('privacyShieldIcon');
-    if (iconEl) iconEl.className = 'privacy-shield-icon morse-active';
+    const badgeEl = document.getElementById('msgDetailStatusBadge');
+    if (badgeEl) {
+      badgeEl.innerText = 'MORSE';
+      badgeEl.style.display = 'inline-block';
+      badgeEl.style.backgroundColor = '#10B981';
+    }
 
     Haptic.trigger(symbol === '.' ? 'short' : 'long');
 
     if (inlineMorseTimer) clearTimeout(inlineMorseTimer);
     inlineMorseTimer = setTimeout(decodeInlineMorseLetter, 800);
-  };
+  }
+
+  // Mouse events (desktop simulator)
+  detailScreen.onmousedown = onMorseTouchStart;
+  detailScreen.onmouseup = onMorseTouchEnd;
+
+  // Touch events (real mobile device — CRITICAL for production use)
+  detailScreen.ontouchstart = onMorseTouchStart;
+  detailScreen.ontouchend = onMorseTouchEnd;
 }
+
 
 function decodeInlineMorseLetter() {
   const char = DECODE_MORSE_MAP[inlineMorseBuffer];
-  const subtitleEl = document.getElementById('privacySubtitle');
+  const footerEl = document.getElementById('msgDetailFooterHint');
 
   if (char) {
     inlineMorseText += char;
-    if (subtitleEl) subtitleEl.innerText = `Morse input: ${inlineMorseText}`;
+    if (footerEl) footerEl.innerText = `Morse: "${inlineMorseText}"`;
     Speech.speak(char);
     logSystem(`Morse converted: "${inlineMorseBuffer}" -> "${char}"`, 'system');
   } else if (inlineMorseBuffer.length > 0) {
@@ -1631,16 +2005,77 @@ function updateReplyScreenUI(isEntrance = false) {
   }
 }
 
+let sttVoiceTranscript = '';
+
 function startSpeechToTextInput() {
   Haptic.trigger('short');
   Speech.speak("Speak your reply after the beep.");
+
+  sttVoiceTranscript = '';
   const statusText = document.getElementById('sttStatusText');
   const resultBox = document.getElementById('sttResultText');
   const micRing = document.getElementById('sttMicRing');
 
   if (micRing) micRing.classList.add('listening');
   if (statusText) statusText.innerText = 'Listening for voice input...';
-  if (resultBox) resultBox.innerText = '"Ќе стигнам за 10 минути"';
+  if (resultBox) resultBox.innerText = 'Listening...';
+
+  if (activeSpeechRecognition) {
+    try { activeSpeechRecognition.stop(); } catch (e) { }
+    activeSpeechRecognition = null;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    if (resultBox) resultBox.innerText = '"Ќе стигнам за 10 минути" (Simulated)';
+    sttVoiceTranscript = 'Ќе стигнам за 10 минути';
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    // Bug fix #6 (reply screen): Use Macedonian locale to match app TTS language.
+    recognition.lang = 'mk-MK';
+
+    recognition.onspeechstart = () => {
+      Haptic.trigger('short');
+    };
+
+    recognition.onresult = (event) => {
+      if (state.currentSubScreen !== 'msgSttView') return;
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      sttVoiceTranscript = transcript;
+      if (resultBox && transcript) {
+        resultBox.innerText = `"${transcript}"`;
+      }
+    };
+
+    recognition.onend = () => {
+      if (micRing) micRing.classList.remove('listening');
+      if (statusText) statusText.innerText = 'Tap or double tap to send, long press to cancel.';
+      if (sttVoiceTranscript) {
+        Speech.speak(`Recorded: ${sttVoiceTranscript}. Tap or double tap to send.`);
+      } else {
+        Speech.speak("No speech detected. Please try again.");
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (micRing) micRing.classList.remove('listening');
+      if (statusText) statusText.innerText = 'Speech error occurred.';
+    };
+
+    recognition.start();
+    activeSpeechRecognition = recognition;
+  } catch (e) {
+    if (resultBox) resultBox.innerText = '"Ќе стигнам за 10 минути" (Simulated)';
+    sttVoiceTranscript = 'Ќе стигнам за 10 минути';
+  }
 }
 
 function handleMessagesGesture(gesture) {
@@ -1648,18 +2083,18 @@ function handleMessagesGesture(gesture) {
     if (gesture === 'swipeRight') {
       if (state.focusedIndex < state.focusedItems.length - 1) {
         state.focusedIndex++;
-        renderMessageThreads();
+        renderMessagesList();
       } else {
-        Haptic.trigger('error');
-        Speech.speak("Last message");
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.senderName : 'Message', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedIndex > 0) {
         state.focusedIndex--;
-        renderMessageThreads();
+        renderMessagesList();
       } else {
-        Haptic.trigger('error');
-        Speech.speak("First message");
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.senderName : 'Message', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       state.selectedMsgIndex = state.focusedIndex;
@@ -1710,8 +2145,13 @@ function handleMessagesGesture(gesture) {
   }
   else if (state.currentSubScreen === 'msgSttView') {
     if (gesture === 'doubleTap' || gesture === 'tap') {
-      sendSMSMessage('Ќе стигнам за 10 минути', 'Message sent');
+      const textToSend = sttVoiceTranscript || 'Ќе стигнам за 10 минути';
+      sendSMSMessage(textToSend, `Message sent: ${textToSend}`);
     } else if (gesture === 'longPress') {
+      if (activeSpeechRecognition) {
+        try { activeSpeechRecognition.stop(); } catch (e) { }
+        activeSpeechRecognition = null;
+      }
       Haptic.trigger('long');
       Speech.speak('Returned to Reply Options');
       navigateTo('messagesScreen', 'msgReplyView');
@@ -1794,7 +2234,7 @@ function initMorseInput() {
   pad.onmouseup = (e) => {
     e.stopPropagation();
     const duration = Date.now() - touchStartTime;
-    const symbol = duration < 300 ? '.' : '-';
+    const symbol = duration < MORSE_INPUT.DOT_THRESHOLD ? '.' : '-';
 
     morseCodeBuffer += symbol;
     if (symbolsLog) symbolsLog.innerText = morseCodeBuffer;
@@ -1839,17 +2279,34 @@ function renderCallsMenu() {
 
   const container = document.getElementById('callsMenuContainer');
   if (container) {
+    // Standardize parent container styling
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.flex = '1';
+    container.style.width = '100%';
+    container.style.boxSizing = 'border-box';
+
     container.innerHTML = `
-      <div class="single-focus-hero-card focused">
-        <div class="card-header-line" style="display: flex; justify-content: flex-end; width: 100%;">
-          <span class="card-counter-badge">[ ${state.focusedIndex + 1} / ${total} ]</span>
+      <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; flex-shrink: 0;">
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
         </div>
-        <div class="hero-icon-circle">
-          <i class="fa-solid ${current.icon} hero-center-icon"></i>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: auto 0; text-align: center; width: 100%;">
+          <div class="hero-icon-circle" style="width: 90px; height: 90px; min-width: 90px; min-height: 90px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; background: rgba(255, 204, 0, 0.05);">
+            <i class="fa-solid ${current.icon}" style="font-size: 2.6rem; color: #FFCC00;"></i>
+          </div>
+          <h2 style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
         </div>
-        <div class="hero-title-group">
-          <h2 class="hero-category-title">${current.name}</h2>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+          <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Select • Swipe: Next ]</span>
         </div>
+      </div>
+      <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+        ${items.map((_, idx) => `
+          <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+        `).join('')}
       </div>
     `;
   }
@@ -1886,7 +2343,7 @@ function renderContacts() {
     const initials = c.name ? c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'C';
 
     card.innerHTML = `
-      <div class="card-header-line" style="display: flex; justify-content: flex-end; width: 100%;">
+      <div class="card-header-line" style="display: flex; justify-content: flex-start; width: 100%;">
         <span class="card-counter-badge">[ ${index + 1} / ${totalContacts} ]</span>
       </div>
       <div class="contact-upper-middle" style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 20px;">
@@ -2031,31 +2488,70 @@ function renderFavorites() {
   if (!container) return;
   container.innerHTML = '';
 
-  state.focusedItems = state.db.contacts.filter(c => c.favorite);
+  const allContacts = (state.db && state.db.contacts) ? state.db.contacts : [];
+  const favoriteContacts = allContacts.filter(c => c.favorite);
+  state.focusedItems = favoriteContacts;
 
-  if (state.focusedItems.length === 0) {
-    container.innerHTML = `<div class="menu-item-card focused"><span class="contact-name" style="font-size:1.6rem; color:#FFCC00;">NO FAVORITES</span></div>`;
-    Speech.speak('No favorite contacts.');
+  const total = favoriteContacts.length;
+
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 0 / 0 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
+          <div class="hero-icon-circle" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; background: rgba(255, 204, 0, 0.05);">
+            <i class="fa-solid fa-star-half-stroke" style="font-size: 2.2rem; color: #FFCC00;"></i>
+          </div>
+          <h2 style="color: #FFCC00; font-size: 1.7rem; margin: 0; font-weight: 800; text-transform: uppercase;">NO FAVORITES</h2>
+          <p style="color: #FFFFFF; font-size: 0.95rem; text-align: center; margin: 0; opacity: 0.9;">Star contacts in the Contacts menu to add them here.</p>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+          <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Long Press: Back to Phone Menu ]</span>
+        </div>
+      </div>
+    `;
+    Speech.speak("No favorite contacts.");
     return;
   }
 
-  const total = state.focusedItems.length;
-  state.focusedItems.forEach((c, index) => {
-    const card = document.createElement('div');
-    card.className = `menu-item-card ${index === state.focusedIndex ? 'focused' : ''}`;
-    card.innerHTML = `
-      <div class="hero-card-header" style="width:100%;">
-        <span class="hero-contact-label">${c.name}</span>
-        <span class="msg-counter-badge">[ ${index + 1} / ${total} ]</span>
+  if (state.focusedIndex >= total) state.focusedIndex = 0;
+  const current = favoriteContacts[state.focusedIndex];
+
+  container.innerHTML = `
+    <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+      
+      <!-- Card Header -->
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
-      <div class="hero-title-group">
-        <h2 class="hero-category-title" style="color:#FFCC00; font-size:2rem; font-weight:800; margin:0;">${c.name}</h2>
-        <p class="hero-category-subtitle" style="color:#FFFFFF; font-size:1.1rem; margin:4px 0 0 0;">${c.phone}</p>
+
+      <!-- Contact Details -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
+        <div class="hero-icon-circle" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; background: rgba(255, 204, 0, 0.05);">
+          <i class="fa-solid fa-star" style="font-size: 2.2rem; color: #FFCC00;"></i>
+        </div>
+        <h2 style="color: #FFCC00; font-size: 2rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
+        <p style="color: #FFFFFF; font-size: 1.1rem; text-align: center; margin: 0; font-family: monospace; font-weight: 700;">${current.phone}</p>
       </div>
-    `;
-    container.appendChild(card);
-  });
-  speakFocusedItem();
+
+      <!-- Action Hint -->
+      <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+        <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Call Contact • Long Press: Back ]</span>
+      </div>
+
+    </div>
+
+    <!-- Carousel Indicator Dots -->
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+      ${favoriteContacts.map((_, idx) => `
+        <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+      `).join('')}
+    </div>
+  `;
+
+  Speech.speak(`${current.name}, ${formatPhoneNumberForSpeech(current.phone)}`);
 }
 
 function renderRecents() {
@@ -2067,8 +2563,7 @@ function renderRecents() {
   if (state.focusedItems.length === 0) {
     container.innerHTML = `
       <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; margin: 0 auto;">
-        <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
-          <span class="card-header-tag" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">[ RECENT CALL ]</span>
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; white-space: nowrap;">
           <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">[ 0 / 0 ]</span>
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
@@ -2093,15 +2588,13 @@ function renderRecents() {
   const isMissed = item.type === 'missed';
   const themeColor = isMissed ? '#FF3333' : '#00FF66'; // Red for missed, Green for received
   const iconClass = isMissed ? 'fa-phone-slash' : 'fa-phone';
-  const callTypeTag = isMissed ? '[ MISSED CALL ]' : '[ RECEIVED CALL ]';
   const statusText = `${item.type ? item.type.toUpperCase() : 'RECEIVED'} • ${(item.time || 'JUST NOW').toUpperCase()}`;
 
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid ${themeColor}; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; margin: 0 auto; box-shadow: 0 0 15px ${themeColor}33;">
       
       <!-- Card Header -->
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; white-space: nowrap;">
-        <span class="card-header-tag" style="color: ${themeColor}; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">${callTypeTag}</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; white-space: nowrap;">
         <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 0.9rem; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
 
@@ -2136,12 +2629,26 @@ function renderRecents() {
 
 function handleCallsGesture(gesture) {
   if (state.currentSubScreen === 'callsMenuView') {
+    const total = state.focusedItems.length || 4;
+
     if (gesture === 'swipeRight') {
-      state.focusedIndex = (state.focusedIndex + 1) % 4;
-      renderCallsMenu();
+      if (state.focusedIndex < total - 1) {
+        state.focusedIndex++;
+        renderCallsMenu();
+      } else {
+        // Stop at item 4 — vibrate and announce last item
+        const currentItem = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', currentItem ? currentItem.name : 'HANDWRITING DIALER', total);
+      }
     } else if (gesture === 'swipeLeft') {
-      state.focusedIndex = (state.focusedIndex - 1 + 4) % 4;
-      renderCallsMenu();
+      if (state.focusedIndex > 0) {
+        state.focusedIndex--;
+        renderCallsMenu();
+      } else {
+        // Stop at item 1 — vibrate and announce first item
+        const currentItem = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', currentItem ? currentItem.name : 'CONTACTS', total);
+      }
     } else if (gesture === 'doubleTap') {
       Haptic.trigger('success');
       if (state.focusedIndex === 0) navigateTo('callsScreen', 'contactsView');
@@ -2158,14 +2665,16 @@ function handleCallsGesture(gesture) {
         state.focusedIndex++;
         renderContacts();
       } else {
-        Haptic.trigger('error');
+        const contact = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', contact ? contact.name : 'Contact', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedIndex > 0) {
         state.focusedIndex--;
         renderContacts();
       } else {
-        Haptic.trigger('error');
+        const contact = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', contact ? contact.name : 'Contact', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       if (state.quickActionSelection) {
@@ -2210,7 +2719,8 @@ function handleCallsGesture(gesture) {
         return;
       }
       Haptic.trigger('long');
-      Speech.speak("Returned to Calls Menu");
+      Speech.speak("Returned to Phone Menu");
+      state.focusedIndex = 0; // Remembers CONTACTS
       navigateTo('callsScreen', 'callsMenuView');
     }
   }
@@ -2234,15 +2744,25 @@ function handleCallsGesture(gesture) {
         Speech.speak(`${contact.name} ${contact.favorite ? 'added to favorites' : 'removed from favorites'}`);
         renderContactActions();
       } else if (selected.id === 'emerg') {
-        contact.emergency = !contact.emergency;
-        saveDb();
-        Haptic.trigger('success');
-        Speech.speak(`${contact.name} ${contact.emergency ? 'set as emergency contact' : 'removed from emergency contacts'}`);
-        renderContactActions();
+        // Bug fix #2: Gate ALL emergency contact changes (add AND remove) behind biometric
+        // auth. Previously only removal from Settings was protected; adding via Phone module
+        // was unguarded and could be exploited with brief physical access to the device.
+        const isCurrentlyEmergency = contact.emergency;
+        const authTitle = isCurrentlyEmergency ? 'Remove Emergency Contact' : 'Add Emergency Contact';
+        const authText = isCurrentlyEmergency
+          ? `Authenticate to remove ${contact.name} from emergency contacts`
+          : `Authenticate to add ${contact.name} as an emergency contact`;
+        triggerBiometricAuth(authTitle, authText, () => {
+          contact.emergency = !contact.emergency;
+          saveDb();
+          Haptic.trigger('success');
+          Speech.speak(`${contact.name} ${contact.emergency ? 'set as emergency contact' : 'removed from emergency contacts'}`);
+          renderContactActions();
+        });
       } else if (selected.id === 'del') {
         state.db.contacts = state.db.contacts.filter(c => c.id !== contact.id);
         saveDb();
-        Haptic.trigger('error'); // Play warning haptic (•••)
+        Haptic.trigger('error');
         Speech.speak(`${contact.name} deleted`);
         state.focusedIndex = 0;
         navigateTo('callsScreen', 'contactsView');
@@ -2276,7 +2796,8 @@ function handleCallsGesture(gesture) {
       }
     } else if (gesture === 'longPress') {
       Haptic.trigger('long');
-      Speech.speak('Returned to Calls Menu');
+      Speech.speak("Returned to Phone Menu");
+      state.focusedIndex = 2; // Remembers RECENT CALLS
       navigateTo('callsScreen', 'callsMenuView');
     }
   }
@@ -2301,7 +2822,8 @@ function handleCallsGesture(gesture) {
       }
     } else if (gesture === 'longPress') {
       Haptic.trigger('long');
-      Speech.speak('Returned to Calls Menu');
+      Speech.speak("Returned to Phone Menu");
+      state.focusedIndex = 1; // Remembers FAVORITES
       navigateTo('callsScreen', 'callsMenuView');
     }
   }
@@ -2324,7 +2846,7 @@ function handleCallsGesture(gesture) {
     } else if (gesture === 'doubleTap') {
       if (currentNumber.length > 0) {
         Haptic.trigger('success');
-        Speech.speak(`Calling ${currentNumber}`);
+        Speech.speak(`Calling ${formatPhoneNumberForSpeech(currentNumber)}`);
         startActiveCall({ name: currentNumber, phone: currentNumber });
       } else {
         Haptic.trigger('error');
@@ -2332,7 +2854,8 @@ function handleCallsGesture(gesture) {
       }
     } else if (gesture === 'longPress') {
       Haptic.trigger('long');
-      Speech.speak('Returned to Calls Menu');
+      Speech.speak("Returned to Phone Menu");
+      state.focusedIndex = 3; // Remembers HANDWRITING DIALER
       navigateTo('callsScreen', 'callsMenuView');
     }
   }
@@ -2341,16 +2864,22 @@ function handleCallsGesture(gesture) {
 let incomingCallInterval = null;
 
 function triggerIncomingCall(contact) {
-  state.previousScreen = state.currentScreen;
-  state.previousSubScreen = state.currentSubScreen;
+  // Store previous screen context
+  if (state.currentScreen && state.currentScreen !== 'incomingCallScreen' && state.currentScreen !== 'welcomeScreen') {
+    state.previousScreen = state.currentScreen;
+    state.previousSubScreen = state.currentSubScreen;
+  } else {
+    state.previousScreen = 'mainMenuScreen';
+    state.previousSubScreen = null;
+  }
 
-  state.currentScreen = 'incomingCallScreen';
-  state.activeCallContact = contact;
-  
+  state.activeCallContact = contact || { name: 'Mother', phone: '+389 70 123 456' };
+
   const nameEl = document.getElementById('incomingCallerName');
-  if (nameEl) nameEl.innerText = contact.name || 'Unknown';
+  if (nameEl) nameEl.innerText = state.activeCallContact.name || 'Unknown';
+
   const numEl = document.getElementById('incomingCallerNumber');
-  if (numEl) numEl.innerText = contact.phone || '';
+  if (numEl) numEl.innerText = state.activeCallContact.phone || '';
 
   navigateTo('incomingCallScreen');
 
@@ -2363,7 +2892,7 @@ function triggerIncomingCall(contact) {
     Haptic.trigger('incomingCall');
   }, 2500);
 
-  Speech.speak("Incoming call from " + (contact.name || "Unknown contact") + ". Double tap to answer, long press to decline.");
+  Speech.speak("Incoming call from " + (state.activeCallContact.name || "Unknown contact") + ". Double tap to answer, long press to decline.");
 }
 
 function answerIncomingCall() {
@@ -2371,10 +2900,10 @@ function answerIncomingCall() {
     clearInterval(incomingCallInterval);
     incomingCallInterval = null;
   }
-  
+
   Haptic.trigger('success');
   Speech.speak("Call connected.");
-  
+
   if (state.activeCallContact) {
     startActiveCall(state.activeCallContact, true);
   } else {
@@ -2389,17 +2918,34 @@ function declineIncomingCall() {
   }
 
   Haptic.trigger('declineCall');
-  Speech.speak("Call declined.");
+  Speech.speak("Call declined. Auto SMS reply sent.");
 
-  if (state.previousScreen) {
-    navigateTo(state.previousScreen, state.previousSubScreen);
-  } else {
-    navigateTo('mainMenuScreen');
+  if (state.activeCallContact) {
+    const contact = state.activeCallContact;
+    logSystem(`Auto SMS reply sent to ${contact.name} (${contact.phone}): "Sorry, I cannot talk right now."`, 'sms');
   }
+
+  // Ensure target screen is valid before executing navigation
+  const targetScreen = (state.previousScreen && state.previousScreen !== 'incomingCallScreen')
+    ? state.previousScreen
+    : 'mainMenuScreen';
+
+  const targetSubScreen = state.previousSubScreen || null;
+
+  // Force navigation back to the active view
+  navigateTo(targetScreen, targetSubScreen);
 }
 
 function startActiveCall(contact, isIncomingAnswer = false) {
   state.activeCallContact = contact;
+  state.isMuted = false;
+  state.isSpeakerphone = false;
+
+  const btnMute = document.getElementById('btnToggleMute');
+  if (btnMute) btnMute.classList.remove('active');
+  const btnSpeaker = document.getElementById('btnToggleSpeaker');
+  if (btnSpeaker) btnSpeaker.classList.remove('active');
+
   navigateTo('activeCallScreen');
 
   const nameEl = document.getElementById('activeCallName');
@@ -2407,14 +2953,17 @@ function startActiveCall(contact, isIncomingAnswer = false) {
   const timerEl = document.getElementById('activeCallTimer');
   if (timerEl) timerEl.innerText = '00:00';
   const statusEl = document.getElementById('activeCallStatus');
-  
+
   if (isIncomingAnswer) {
     if (statusEl) statusEl.innerText = 'Connected';
     Haptic.playSound('connected');
+    // Bug fix #3a (support): Flag that this was an incoming call so endCall() logs it correctly.
+    state._lastCallWasIncoming = true;
     logSystem(`Incoming call connected with ${contact.name}`, 'action');
   } else {
     if (statusEl) statusEl.innerText = 'Calling...';
     Haptic.playSound('ringing');
+    state._lastCallWasIncoming = false;
     logSystem(`Placing call to ${contact.name} (${contact.phone})`, 'action');
   }
 
@@ -2454,12 +3003,20 @@ function endCall() {
   logSystem('Call ended.', 'action');
 
   if (state.activeCallContact) {
+    // Bug fix #3a: Record the correct call type ('outgoing' vs 'received') instead of
+    // always logging every call as 'received'.
+    const callType = state._lastCallWasIncoming ? 'received' : 'outgoing';
+    state._lastCallWasIncoming = false; // reset flag
     state.db.recentCalls.unshift({
       id: Date.now(),
       name: state.activeCallContact.name,
-      type: 'received',
+      type: callType,
       time: 'Just now'
     });
+    // Bug fix #3b: Cap recentCalls at 50 entries to prevent unbounded localStorage growth.
+    if (state.db.recentCalls.length > 50) {
+      state.db.recentCalls = state.db.recentCalls.slice(0, 50);
+    }
     saveDb();
   }
 
@@ -2471,44 +3028,71 @@ function renderCameraMenu() {
   const container = document.getElementById('cameraMenuContainer');
   if (!container) return;
 
-  const items = [
-    { id: 'ocr', name: 'READ TEXT (OCR)', icon: 'fa-file-invoice' },
-    { id: 'obj', name: 'OBJECT DETECTION', icon: 'fa-cubes' }
-  ];
-  state.focusedItems = items;
+  // Standardize parent container styling
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.alignItems = 'center';
+  container.style.justifyContent = 'center';
+  container.style.flex = '1';
+  container.style.width = '100%';
+  container.style.boxSizing = 'border-box';
   container.innerHTML = '';
-  const total = items.length;
 
-  items.forEach((item, index) => {
-    const card = document.createElement('div');
-    card.className = `single-focus-hero-card focused ${index === state.focusedIndex ? 'active' : ''}`;
-    card.id = `cameraOpt_${item.id}`;
-    card.innerHTML = `
-      <div class="card-header-line" style="display: flex; justify-content: flex-end; width: 100%;">
-        <span class="card-counter-badge">[ ${index + 1} / ${total} ]</span>
+  const cameraItems = [
+    {
+      id: 'ocr',
+      title: 'TEXT READER (OCR)',
+      icon: 'fa-solid fa-file-lines',
+      description: 'Read labels, documents, and signs aloud.'
+    },
+    {
+      id: 'objectDetection',
+      title: 'OBJECT DETECTION',
+      icon: 'fa-solid fa-cubes',
+      description: 'Identify objects and obstacles in front of you.'
+    }
+  ];
+
+  state.focusedItems = cameraItems;
+  const total = cameraItems.length;
+
+  if (state.focusedIndex >= total) state.focusedIndex = 0;
+  const current = cameraItems[state.focusedIndex];
+
+  container.innerHTML = `
+    <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+      
+      <!-- Card Header Counter -->
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; flex-shrink: 0;">
+        <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
 
-      <div class="hero-icon-circle">
-        <i class="fa-solid ${item.icon} hero-center-icon"></i>
+      <!-- Center Icon & Title -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: auto 0; text-align: center; width: 100%;">
+        <div class="hero-icon-circle" style="width: 90px; height: 90px; min-width: 90px; min-height: 90px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; background: rgba(255, 204, 0, 0.05);">
+          <i class="${current.icon}" style="font-size: 2.6rem; color: #FFCC00;"></i>
+        </div>
+        <h2 style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">
+          ${current.title}
+        </h2>
       </div>
 
-      <div class="hero-title-group">
-        <h2 class="hero-category-title">${item.name}</h2>
+      <!-- Card Footer Action Hint -->
+      <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+        <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Activate Camera • Long Press: Back ]</span>
       </div>
-    `;
-    container.appendChild(card);
-  });
 
-  const dotsContainer = document.createElement('div');
-  dotsContainer.className = 'menu-carousel-dots pagination-dots';
-  items.forEach((_, index) => {
-    const dot = document.createElement('span');
-    dot.className = `carousel-dot ${index === state.focusedIndex ? 'active' : ''}`;
-    dotsContainer.appendChild(dot);
-  });
-  container.appendChild(dotsContainer);
+    </div>
 
-  Speech.speak(items[state.focusedIndex].name);
+    <!-- Carousel Dots -->
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+      ${cameraItems.map((_, idx) => `
+        <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+      `).join('')}
+    </div>
+  `;
+
+  Speech.speak(`${current.title}. Option ${state.focusedIndex + 1} of ${total}.`);
 }
 
 function startCameraActiveViewport() {
@@ -2516,18 +3100,74 @@ function startCameraActiveViewport() {
   const toast = document.getElementById('cameraToast');
   if (toast) toast.style.display = 'none';
 
-  Speech.speak('Camera active. Point your phone and double tap screen to capture.');
+  const video = document.getElementById('webcamFeed');
+  if (video) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        state.webcamStream = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        Speech.speak('Camera active. Point your phone and double tap screen to capture.');
+      })
+      .catch(err => {
+        console.error("Camera access failed:", err);
+        Speech.speak('Camera active in simulator mode. Point your phone and double tap screen to capture.');
+      });
+  } else {
+    Speech.speak('Camera active. Point your phone and double tap screen to capture.');
+  }
 }
 
 function stopWebcam() {
   state.isCameraActive = false;
+  const video = document.getElementById('webcamFeed');
+  if (video) {
+    video.srcObject = null;
+  }
   if (state.webcamStream) {
     state.webcamStream.getTracks().forEach(track => track.stop());
     state.webcamStream = null;
   }
 }
 
-function captureCameraImage() {
+async function measureFrameLuma() {
+  const video = document.getElementById('webcamFeed') || document.querySelector('video');
+  if (!video || !state.isCameraActive) return null;
+
+  try {
+    const canvas = document.createElement('canvas');
+    // Sample at low resolution for speed
+    canvas.width = 64;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imageData.data;
+    let total = 0;
+    // Luma approximation: 0.299R + 0.587G + 0.114B
+    for (let i = 0; i < d.length; i += 4) {
+      total += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    }
+    return total / (canvas.width * canvas.height);
+  } catch (e) {
+    return null; // canvas taint or browser restriction
+  }
+}
+
+async function captureCameraImage() {
+  // --- AMBIENT LIGHT CHECK ---
+  // Blind users cannot see whether the room is lit. Warn early rather
+  // than returning a blank/noisy OCR result with no explanation.
+  const luma = await measureFrameLuma();
+  const LUMA_THRESHOLD = 30; // below this → very dark frame
+
+  if (luma !== null && luma < LUMA_THRESHOLD) {
+    Haptic.trigger('error');
+    Speech.speak('Light level is too low. Please turn on a light or the flashlight before scanning.');
+    logSystem(`Camera luma check: ${luma.toFixed(1)} — below threshold, warned user.`, 'error');
+    return; // abort capture
+  }
+
   Haptic.trigger('success');
   const toast = document.getElementById('cameraToast');
   if (toast) {
@@ -2545,9 +3185,37 @@ function captureCameraImage() {
   }, 1000);
 }
 
+
 function renderCameraResults() {
   const display = document.getElementById('cameraResultText');
-  const resultText = 'Paracetamol Tablets, 500mg. Take one tablet twice daily with water. Keep out of reach of children.';
+  const ocrSelect = document.getElementById('ocrSceneSelect');
+  const objSelect = document.getElementById('objectSceneSelect');
+  const categoryTag = document.querySelector('#cameraResultsView .hero-category-tag');
+
+  let resultText = '';
+
+  if (state.cameraMode === 'object') {
+    if (categoryTag) categoryTag.innerHTML = '<i class="fa-solid fa-cubes"></i> DETECTED OBJECTS';
+    const choice = objSelect ? objSelect.value : 'chair';
+    const mappings = {
+      chair: 'Office Chair detected directly in front of you. Path is slightly blocked.',
+      cup: 'Coffee Cup and Notebook detected on the table.',
+      keyboard: 'Computer Keyboard and Mouse detected on the desk.'
+    };
+    resultText = mappings[choice] || 'No objects detected.';
+  } else {
+    if (categoryTag) categoryTag.innerHTML = '<i class="fa-solid fa-file-lines"></i> SCANNED TEXT';
+    const choice = ocrSelect ? ocrSelect.value : 'medicine';
+    const mappings = {
+      medicine: 'Paracetamol Tablets, 500mg. Take one tablet twice daily with water. Keep out of reach of children.',
+      book: 'Chapter 1. It was a dark and stormy night; the rain fell in torrents...',
+      label: 'Whole Milk, 1L, Price: $1.99. Best by: August 2nd.',
+      menu: 'Pasta Carbonara - 12 USD, Lasagna - 14 USD, Tiramisu - 6 USD. Ask server for specials.',
+      webcam: 'Real-time text from camera feed: High contrast labels found.'
+    };
+    resultText = mappings[choice] || 'No text recognized.';
+  }
+
   if (display) display.innerText = resultText;
   Speech.speak(resultText);
 }
@@ -2555,12 +3223,23 @@ function renderCameraResults() {
 function handleCameraGesture(gesture) {
   if (state.currentSubScreen === 'cameraMenuView') {
     if (gesture === 'swipeRight') {
-      state.focusedIndex = (state.focusedIndex + 1) % state.focusedItems.length;
-      renderCameraMenu();
+      if (state.focusedIndex < state.focusedItems.length - 1) {
+        state.focusedIndex++;
+        renderCameraMenu();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Option', state.focusedItems.length);
+      }
     } else if (gesture === 'swipeLeft') {
-      state.focusedIndex = (state.focusedIndex - 1 + state.focusedItems.length) % state.focusedItems.length;
-      renderCameraMenu();
+      if (state.focusedIndex > 0) {
+        state.focusedIndex--;
+        renderCameraMenu();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Option', state.focusedItems.length);
+      }
     } else if (gesture === 'doubleTap') {
+      state.cameraMode = state.focusedIndex === 0 ? 'ocr' : 'object';
       navigateTo('cameraScreen', 'cameraActiveView');
     } else if (gesture === 'longPress') {
       navigateTo('mainMenuScreen');
@@ -2571,13 +3250,18 @@ function handleCameraGesture(gesture) {
       captureCameraImage();
     } else if (gesture === 'longPress') {
       stopWebcam();
+      Haptic.trigger('long');
+      Speech.speak('Returned to Camera Menu');
+      // state.focusedIndex is preserved (0 for OCR, 1 for Object Detection)
       navigateTo('cameraScreen', 'cameraMenuView');
     }
   }
   else if (state.currentSubScreen === 'cameraResultsView') {
     if (gesture === 'longPress') {
+      stopWebcam();
       Haptic.trigger('long');
-      Speech.speak('Returned to Camera');
+      Speech.speak('Returned to Camera Menu');
+      // state.focusedIndex is preserved (0 for OCR, 1 for Object Detection)
       navigateTo('cameraScreen', 'cameraMenuView');
     } else if (gesture === 'doubleTap') {
       Haptic.trigger('success');
@@ -2599,23 +3283,38 @@ function renderNavigationMenu() {
   state.focusedItems = items;
   const current = items[state.focusedIndex] || items[0];
   const container = document.getElementById('navMenuContainer');
+  const total = items.length;
 
   if (container) {
+    // Standardize parent container styling
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.flex = '1';
+    container.style.width = '100%';
+    container.style.boxSizing = 'border-box';
+
     container.innerHTML = `
-      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000;">
-        <div class="card-header-line" style="display: flex; justify-content: flex-end; width: 100%;">
-          <span class="card-counter-badge" style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${items.length} ]</span>
+      <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; flex-shrink: 0;">
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
         </div>
-        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-          <div style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #FFCC00; display: flex; align-items: center; justify-content: center;">
-            <i class="fa-solid ${current.icon}" style="font-size: 2.2rem; color: #FFCC00;"></i>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: auto 0; text-align: center; width: 100%;">
+          <div class="hero-icon-circle" style="width: 90px; height: 90px; min-width: 90px; min-height: 90px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; background: rgba(255, 204, 0, 0.05);">
+            <i class="fa-solid ${current.icon}" style="font-size: 2.6rem; color: #FFCC00;"></i>
           </div>
-          <h2 style="color: #FFCC00; font-size: 2rem; margin: 0; font-weight: 800; text-transform: uppercase;">${current.name}</h2>
-          <p style="color: #FFFFFF; font-size: 1rem; text-align: center; margin: 0;">${current.subtitle}</p>
+          <h2 style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
+          <p style="color: #FFFFFF; font-size: 1rem; text-align: center; margin: 4px 0 0 0;">${current.subtitle}</p>
         </div>
-        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center;">
-          <span style="color: #FFCC00; font-size: 0.85rem;">[ Double Tap: Select • Swipe: Next ]</span>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+          <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Select • Swipe: Next ]</span>
         </div>
+      </div>
+      <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+        ${items.map((_, idx) => `
+          <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+        `).join('')}
       </div>
     `;
   }
@@ -2646,7 +3345,8 @@ function startNavigationSpeechSearch() {
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    // Bug fix #6 (navigation STT): Use Macedonian locale to match app TTS language.
+    recognition.lang = 'mk-MK';
 
     recognition.onresult = (event) => {
       if (state.currentSubScreen !== 'navDestinationInputView') return;
@@ -2683,14 +3383,14 @@ function initNavMorseListeners() {
     e.stopPropagation();
     const duration = Date.now() - navTouchStartTime;
 
-    if (duration >= 600) return;
+    if (duration >= MORSE_INPUT.DASH_THRESHOLD) return;
 
     if (navSpeechRecognition) {
       try { navSpeechRecognition.stop(); } catch (err) { }
       navSpeechRecognition = null;
     }
 
-    const symbol = duration < 300 ? '.' : '-';
+    const symbol = duration < MORSE_INPUT.DOT_THRESHOLD ? '.' : '-';
     navMorseBuffer += symbol;
 
     Haptic.trigger(symbol === '.' ? 'short' : 'long');
@@ -2789,9 +3489,8 @@ function renderNavigationActions() {
 
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 18px 16px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span class="card-header-title" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem;">Eurofarm Pharmacy</span>
-        <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto 0;">
         <div class="hero-icon-circle" style="width: 70px; height: 70px; min-width: 70px; min-height: 70px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center;">
@@ -2823,14 +3522,22 @@ function renderNavigationResults() {
   const container = document.getElementById('navResultsContainer');
   if (!container) return;
 
+  // Force container to fill available vertical space and center content — same pattern as renderMessagesList
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.justifyContent = 'center';
+  container.style.alignItems = 'center';
+  container.style.height = '100%';
+  container.style.width = '100%';
+  container.style.boxSizing = 'border-box';
+
   const places = state.db.savedPlaces || [];
   state.focusedItems = places;
 
   if (places.length === 0) {
     container.innerHTML = `
       <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 18px 16px; background: #000000; overflow: hidden;">
-        <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-          <span style="color: #FFCC00; font-weight: bold; font-size: 0.9rem;">[ SAVED PLACES ]</span>
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
           <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ 0 / 0 ]</span>
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto 0;">
@@ -2854,23 +3561,20 @@ function renderNavigationResults() {
   const total = places.length;
 
   container.innerHTML = `
-    <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 18px 16px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span style="color: #FFCC00; font-weight: bold; font-size: 0.9rem;">[ SAVED PLACE ]</span>
+    <div class="hero-card" style="width: calc(100% - 32px); height: auto; border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px; padding: 22px 18px; background: #000000; margin: 0 auto; overflow: hidden;">
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
         <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto 0;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 0 auto; width: 100%;">
         <div class="hero-icon-circle" style="width: 70px; height: 70px; min-width: 70px; min-height: 70px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center;">
           <i class="fa-solid fa-star" style="font-size: 1.8rem; color: #FFCC00;"></i>
         </div>
         <h2 style="color: #FFCC00; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
         <p style="color: #FFFFFF; font-size: 0.95rem; text-align: center; margin: 0; line-height: 1.3;">${current.address || ''}</p>
       </div>
-      <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
-        <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Location Options • Swipe: Next Place ]</span>
-      </div>
+     
     </div>
-    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 6px; flex-shrink: 0;">
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0;">
       ${places.map((_, idx) => `
         <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
       `).join('')}
@@ -2943,8 +3647,7 @@ function renderSavedPlaceActions() {
 
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid ${themeColor}; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 18px 16px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span class="card-header-title" style="color: ${themeColor}; font-weight: bold; font-size: 0.9rem; white-space: nowrap; flex-shrink: 0;">${place.name}</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
         <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto 0;">
@@ -2971,11 +3674,21 @@ function renderSavedPlaceActions() {
 function handleNavigationGesture(gesture) {
   if (state.currentSubScreen === 'navMenuView') {
     if (gesture === 'swipeRight') {
-      state.focusedIndex = (state.focusedIndex + 1) % 2;
-      renderNavigationMenu();
+      if (state.focusedIndex < 1) {
+        state.focusedIndex++;
+        renderNavigationMenu();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Saved Places', 2);
+      }
     } else if (gesture === 'swipeLeft') {
-      state.focusedIndex = (state.focusedIndex - 1 + 2) % 2;
-      renderNavigationMenu();
+      if (state.focusedIndex > 0) {
+        state.focusedIndex--;
+        renderNavigationMenu();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Enter Destination', 2);
+      }
     } else if (gesture === 'doubleTap') {
       if (state.focusedIndex === 0) {
         selectedSavedPlace = null;
@@ -3000,6 +3713,7 @@ function handleNavigationGesture(gesture) {
       }
       Haptic.trigger('long');
       Speech.speak("Returned to Navigation Menu");
+      state.focusedIndex = 0; // Remembers ENTER DESTINATION
       navigateTo('navigationScreen', 'navMenuView');
     }
   }
@@ -3017,16 +3731,27 @@ function handleNavigationGesture(gesture) {
         }
         Haptic.trigger('long');
         Speech.speak("Returned to Navigation Menu");
+        state.focusedIndex = 1; // Remembers SAVED PLACES
         navigateTo('navigationScreen', 'navMenuView');
       }
       return;
     }
     if (gesture === 'swipeRight') {
-      state.focusedIndex = (state.focusedIndex + 1) % places.length;
-      renderNavigationResults();
+      if (state.focusedIndex < places.length - 1) {
+        state.focusedIndex++;
+        renderNavigationResults();
+      } else {
+        const item = places[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Place', places.length);
+      }
     } else if (gesture === 'swipeLeft') {
-      state.focusedIndex = (state.focusedIndex - 1 + places.length) % places.length;
-      renderNavigationResults();
+      if (state.focusedIndex > 0) {
+        state.focusedIndex--;
+        renderNavigationResults();
+      } else {
+        const item = places[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Place', places.length);
+      }
     } else if (gesture === 'doubleTap') {
       if (state.quickActionSelection) {
         const place = places[state.focusedIndex];
@@ -3067,41 +3792,41 @@ function handleNavigationGesture(gesture) {
       }
       Haptic.trigger('long');
       Speech.speak("Returned to Navigation Menu");
+      state.focusedIndex = 1; // Remembers SAVED PLACES
       navigateTo('navigationScreen', 'navMenuView');
     }
   }
   else if (state.currentSubScreen === 'navActionsView') {
-    if (selectedSavedPlace) {
-      if (gesture === 'swipeRight') {
-        state.focusedIndex = (state.focusedIndex + 1) % 3;
-        renderSavedPlaceActions();
-      } else if (gesture === 'swipeLeft') {
-        state.focusedIndex = (state.focusedIndex - 1 + 3) % 3;
-        renderSavedPlaceActions();
-      } else if (gesture === 'doubleTap') {
-        const current = state.focusedItems[state.focusedIndex];
-        if (current && typeof current.action === 'function') {
-          current.action();
-        }
-      } else if (gesture === 'longPress') {
-        Haptic.trigger('long');
+    const total = state.focusedItems.length || 3;
+    if (gesture === 'swipeRight') {
+      if (state.focusedIndex < total - 1) {
+        state.focusedIndex++;
+        if (selectedSavedPlace) renderSavedPlaceActions();
+        else renderNavigationActions();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Action', total);
+      }
+    } else if (gesture === 'swipeLeft') {
+      if (state.focusedIndex > 0) {
+        state.focusedIndex--;
+        if (selectedSavedPlace) renderSavedPlaceActions();
+        else renderNavigationActions();
+      } else {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Action', total);
+      }
+    } else if (gesture === 'doubleTap') {
+      const current = state.focusedItems[state.focusedIndex];
+      if (current && typeof current.action === 'function') {
+        current.action();
+      }
+    } else if (gesture === 'longPress') {
+      Haptic.trigger('long');
+      if (selectedSavedPlace) {
         Speech.speak("Returned to Saved Places");
         navigateTo('navigationScreen', 'navResultsView');
-      }
-    } else {
-      if (gesture === 'swipeRight') {
-        state.focusedIndex = (state.focusedIndex + 1) % 3;
-        renderNavigationActions();
-      } else if (gesture === 'swipeLeft') {
-        state.focusedIndex = (state.focusedIndex - 1 + 3) % 3;
-        renderNavigationActions();
-      } else if (gesture === 'doubleTap') {
-        const current = state.focusedItems[state.focusedIndex];
-        if (current && typeof current.action === 'function') {
-          current.action();
-        }
-      } else if (gesture === 'longPress') {
-        Haptic.trigger('long');
+      } else {
         Speech.speak("Returned to Navigation Menu");
         navigateTo('navigationScreen', 'navMenuView');
       }
@@ -3163,6 +3888,7 @@ function renderSettingsMenu() {
   const items = [
     { id: 'access', name: 'ACCESSIBILITY', icon: 'fa-universal-access', hint: '[ Double Tap: Open Accessibility Settings ]' },
     { id: 'quick', name: 'QUICK ACCESS', icon: 'fa-bolt', hint: '[ Double Tap: Configure Shortcuts ]' },
+    { id: 'emerg', name: 'EMERGENCY CONTACTS', icon: 'fa-triangle-exclamation', hint: '[ Double Tap: Emergency Settings ]' },
     { id: 'tutorial', name: 'RESTART TUTORIAL', icon: 'fa-graduation-cap', hint: '[ Double Tap: Start Onboarding ]' }
   ];
   state.focusedItems = items;
@@ -3175,7 +3901,7 @@ function renderSettingsMenu() {
   if (container) {
     container.innerHTML = `
       <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-        <div class="card-header-line" style="display: flex; justify-content: flex-end; width: 100%;">
+        <div class="card-header-line" style="display: flex; justify-content: flex-start; width: 100%;">
           <span class="card-counter-badge" style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ ${state.focusedIndex + 1} / ${total} ]</span>
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
@@ -3249,8 +3975,7 @@ function updateAccessibilitySettingsUI(suppressSpeech = false) {
 
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span class="card-header-title" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACCESSIBILITY</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
         <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0;">
@@ -3329,8 +4054,7 @@ function updateQuickAccessUI() {
   if (total === 0) {
     container.innerHTML = `
       <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-        <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-          <span class="card-header-title" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">QUICK ACCESS</span>
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
           <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ 0 / 0 ]</span>
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0;">
@@ -3353,8 +4077,7 @@ function updateQuickAccessUI() {
   const isEnabled = state.db.settings.quickAccess.includes(current.id);
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span class="card-header-title" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">QUICK ACCESS</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
         <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0;">
@@ -3431,8 +4154,7 @@ function updateQuickActionTypesUI(suppressSpeech = false) {
 
   container.innerHTML = `
     <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-      <div class="card-header" style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-        <span class="card-header-title" style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ACTION TYPE</span>
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
         <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
       </div>
       <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0;">
@@ -3440,7 +4162,7 @@ function updateQuickActionTypesUI(suppressSpeech = false) {
           <i class="fa-solid ${current.icon}" style="font-size: 2.2rem; color: #FFCC00; line-height: 1; margin: 0; padding: 0;"></i>
         </div>
         <h2 style="color: #FFCC00; font-size: 1.7rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
-        <p style="color: #FFFFFF; font-size: 0.95rem; text-align: center; margin: 0; opacity: 0.9;">${current.subtitle}</p>
+        
       </div>
       <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
         <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">${current.hint}</span>
@@ -3454,7 +4176,7 @@ function updateQuickActionTypesUI(suppressSpeech = false) {
   `;
 
   if (!suppressSpeech) {
-    Speech.speak(`${current.name}. ${current.subtitle}`);
+    Speech.speak(`${current.name}`);
   }
 }
 
@@ -3465,14 +4187,16 @@ function handleSettingsGesture(gesture) {
         state.focusedIndex++;
         renderSettingsMenu();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Setting', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedIndex > 0) {
         state.focusedIndex--;
         renderSettingsMenu();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Setting', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       Haptic.trigger('success');
@@ -3485,7 +4209,18 @@ function handleSettingsGesture(gesture) {
         navigateTo('settingsScreen', 'quickAccessSettingsView');
         renderQuickAccessSettings();
       } else if (state.focusedIndex === 2) {
-        Speech.speak('Restarting tutorial.');
+        state.focusedIndex = 0;
+        navigateTo('settingsScreen', 'emergencySettingsView');
+        renderEmergencySettings();
+      } else if (state.focusedIndex === 3) {
+        // RESTART TUTORIAL FIX
+        if (!state.db) state.db = {};
+        state.db.tutorialCompleted = false;
+        state.db.letterProfiles = {};
+        localStorage.removeItem('blindEye_tutorialCompleted');
+        saveDb();
+
+        Speech.speak('Restarting handwriting tutorial and gesture calibration.');
         startTutorial();
       }
     } else if (gesture === 'longPress') {
@@ -3499,14 +4234,16 @@ function handleSettingsGesture(gesture) {
         state.focusedIndex++;
         updateAccessibilitySettingsUI();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Accessibility Setting', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedIndex > 0) {
         state.focusedIndex--;
         updateAccessibilitySettingsUI();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Accessibility Setting', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       const current = state.focusedItems[state.focusedIndex];
@@ -3522,7 +4259,9 @@ function handleSettingsGesture(gesture) {
       Haptic.trigger('success');
       updateAccessibilitySettingsUI();
     } else if (gesture === 'longPress') {
-      Speech.speak('Returned to Settings');
+      Haptic.trigger('long');
+      Speech.speak('Returned to Settings Menu');
+      state.focusedIndex = 0; // Remembers ACCESSIBILITY
       navigateTo('settingsScreen', 'settingsMenuView');
     }
   }
@@ -3537,15 +4276,17 @@ function handleSettingsGesture(gesture) {
       if (state.focusedItems.length > 0 && state.focusedIndex < state.focusedItems.length - 1) {
         state.focusedIndex++;
         updateQuickAccessUI();
-      } else {
-        Haptic.trigger('error');
+      } else if (state.focusedItems.length > 0) {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Quick Access', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedItems.length > 0 && state.focusedIndex > 0) {
         state.focusedIndex--;
         updateQuickAccessUI();
-      } else {
-        Haptic.trigger('error');
+      } else if (state.focusedItems.length > 0) {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Quick Access', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       if (state.focusedItems.length > 0) {
@@ -3573,7 +4314,9 @@ function handleSettingsGesture(gesture) {
         Haptic.trigger('error');
       }
     } else if (gesture === 'longPress') {
-      Speech.speak('Returned to Settings');
+      Haptic.trigger('long');
+      Speech.speak('Returned to Settings Menu');
+      state.focusedIndex = 1; // Remembers QUICK ACCESS
       navigateTo('settingsScreen', 'settingsMenuView');
     }
   }
@@ -3583,14 +4326,16 @@ function handleSettingsGesture(gesture) {
         state.focusedIndex++;
         updateQuickActionTypesUI();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Action Type', state.focusedItems.length);
       }
     } else if (gesture === 'swipeLeft') {
       if (state.focusedIndex > 0) {
         state.focusedIndex--;
         updateQuickActionTypesUI();
       } else {
-        Haptic.trigger('error');
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Action Type', state.focusedItems.length);
       }
     } else if (gesture === 'doubleTap') {
       const current = state.focusedItems[state.focusedIndex];
@@ -3606,6 +4351,105 @@ function handleSettingsGesture(gesture) {
       renderQuickAccessSettings();
     }
   }
+  else if (state.currentSubScreen === 'emergencySettingsView') {
+    const total = state.focusedItems.length;
+    if (gesture === 'swipeRight') {
+      if (total > 0 && state.focusedIndex < total - 1) {
+        state.focusedIndex++;
+        renderEmergencySettings();
+      } else if (total > 0) {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('last', item ? item.name : 'Emergency Contact', total);
+      }
+    } else if (gesture === 'swipeLeft') {
+      if (total > 0 && state.focusedIndex > 0) {
+        state.focusedIndex--;
+        renderEmergencySettings();
+      } else if (total > 0) {
+        const item = state.focusedItems[state.focusedIndex];
+        announceListBoundary('first', item ? item.name : 'Emergency Contact', total);
+      }
+    } else if (gesture === 'doubleTap') {
+      if (total > 0) {
+        const contact = state.focusedItems[state.focusedIndex];
+        triggerBiometricAuth('Remove Emergency Contact', `Authenticate to remove ${contact.name} from emergency contacts`, () => {
+          contact.emergency = false;
+          saveDb();
+          Haptic.trigger('success');
+          Speech.speak(`${contact.name} removed from emergency contacts`);
+          state.focusedIndex = 0;
+          renderEmergencySettings();
+        });
+      }
+    } else if (gesture === 'longPress') {
+      Haptic.trigger('long');
+      Speech.speak('Returned to Settings Menu');
+      state.focusedIndex = 2; // Remembers EMERGENCY CONTACTS
+      navigateTo('settingsScreen', 'settingsMenuView');
+    }
+  }
+}
+
+function renderEmergencySettings() {
+  const container = document.getElementById('emergencySettingsContainer');
+  if (!container) return;
+
+  // Ensure state.db and contacts exist
+  const allContacts = (state.db && state.db.contacts) ? state.db.contacts : [];
+  const emergencyContacts = allContacts.filter(c => c.emergency);
+  state.focusedItems = emergencyContacts;
+
+  const total = emergencyContacts.length;
+
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
+        <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
+          <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ 0 / 0 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
+          <div class="hero-icon-circle" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; margin: 0 auto; background: rgba(255, 204, 0, 0.05);">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.2rem; color: #FFCC00; line-height: 1; margin: 0; padding: 0;"></i>
+          </div>
+          <h2 style="color: #FFCC00; font-size: 1.7rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">NO CONTACTS</h2>
+          <p style="color: #FFFFFF; font-size: 0.95rem; text-align: center; margin: 0; opacity: 0.9;">Assign emergency contacts in the Phone module.</p>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+          <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Long Press: Back ]</span>
+        </div>
+      </div>
+    `;
+    Speech.speak("No emergency contacts configured.");
+    return;
+  }
+
+  if (state.focusedIndex >= total) state.focusedIndex = 0;
+  const current = emergencyContacts[state.focusedIndex];
+
+  container.innerHTML = `
+    <div class="hero-card" style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
+      <div class="card-header" style="width: 100%; display: flex; justify-content: flex-start; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span class="card-header-counter" style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[ ${state.focusedIndex + 1} / ${total} ]</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
+        <div class="hero-icon-circle" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; margin: 0 auto; background: rgba(255, 204, 0, 0.05);">
+          <i class="fa-solid fa-user" style="font-size: 2.2rem; color: #FFCC00; line-height: 1; margin: 0; padding: 0;"></i>
+        </div>
+        <h2 style="color: #FFCC00; font-size: 1.7rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
+        <p style="color: #FFFFFF; font-size: 1.1rem; text-align: center; margin: 0; font-family: monospace;">${current.phone}</p>
+      </div>
+      <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+        <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Remove Emergency Status • Long Press: Back ]</span>
+      </div>
+    </div>
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
+      ${emergencyContacts.map((_, idx) => `
+        <span style="width: ${idx === state.focusedIndex ? '24px' : '8px'}; height: 8px; background: ${idx === state.focusedIndex ? '#FFCC00' : '#666666'}; border-radius: ${idx === state.focusedIndex ? '4px' : '50%'};"></span>
+      `).join('')}
+    </div>
+  `;
+
+  Speech.speak(`${current.name}. Emergency Contact.`);
 }
 
 // ==========================================
@@ -3636,7 +4480,8 @@ function triggerSOS() {
     countBox.style.display = 'block';
   }
 
-  Speech.speak('S O S triggered. Shaking detected. Initializing emergency countdown. Hold down screen to cancel.');
+  // Concise announcement so speech is not truncated by the 1-second interval
+  Speech.speak('S O S Active. 3');
   Haptic.trigger('error');
 
   if (state.sosCountdownTimer) clearInterval(state.sosCountdownTimer);
@@ -3658,6 +4503,10 @@ function triggerSOS() {
 function cancelSOS() {
   if (state.sosCountdownTimer) clearInterval(state.sosCountdownTimer);
 
+  // Reset cooldown so shake cannot immediately re-trigger after cancel
+  // (the devicemotion listener reads state._sosCooldownUntil)
+  state._sosCooldownUntil = Date.now() + 10000;
+
   try {
     const siren = document.getElementById('soundSiren');
     if (siren) siren.pause();
@@ -3668,6 +4517,7 @@ function cancelSOS() {
   logSystem('SOS emergency bypass active. SOS alerts terminated.', 'error');
   navigateTo('mainMenuScreen');
 }
+
 
 function dispatchSOSAlerts() {
   state.sosIsDispatched = true;
@@ -3681,14 +4531,16 @@ function dispatchSOSAlerts() {
     dispatchedBox.style.display = 'flex';
   }
 
-  // Find primary emergency contact or fallback to first contact
-  const emergencyContact = state.db.contacts.find(c => c.emergency) || state.db.contacts[0] || { name: 'Mother', phone: '+389 70 123 456' };
+  const emergencyContact = (state.db && state.db.contacts)
+    ? state.db.contacts.find(c => c.emergency) || state.db.contacts[0]
+    : { name: 'Mother', phone: '+389 70 123 456' };
+
   const contactDisplay = document.getElementById('sosEmergencyContactDisplay');
   if (contactDisplay) {
     contactDisplay.innerText = `${emergencyContact.name} (${emergencyContact.phone})`;
   }
 
-  Speech.speak('S O S Alert dispatched. Displaying emergency request on screen.');
+  Speech.speak('S O S Alert dispatched. Displaying emergency statement: I have a disability. I need help.');
 }
 
 // ==========================================
@@ -3701,23 +4553,35 @@ function triggerBiometricAuth(title, text, onSuccessCallback) {
   onBioSuccessCallback = onSuccessCallback;
 
   const overlay = document.getElementById('biometricOverlay');
-  if (overlay) overlay.classList.add('active');
+  if (overlay) {
+    overlay.style.display = 'block';
+    overlay.classList.add('active');
+  }
 
-  const promptTitle = document.getElementById('bioPromptTitle');
-  if (promptTitle) promptTitle.innerText = title || 'Authentication Required';
-  const promptText = document.getElementById('bioPromptText');
-  if (promptText) promptText.innerText = text || 'Place finger anywhere on screen.';
+  // Non-visual voice guidance
+  Speech.speak("Authentication required. Place your finger anywhere on the screen.");
 
-  Speech.speak('Place finger anywhere on screen for biometric authentication.');
+  // Bind full-screen touch listener
+  if (overlay) {
+    overlay.onclick = (e) => {
+      e.stopPropagation();
+      handleBiometricSuccess();
+    };
+  }
 }
 
 function handleBiometricSuccess() {
   const overlay = document.getElementById('biometricOverlay');
-  if (overlay) overlay.classList.remove('active');
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.classList.remove('active');
+    overlay.onclick = null;
+  }
 
-  Haptic.trigger('success');
-  Speech.speak('Biometric authentication successful.');
-  logSystem('Biometric authentication succeeded.', 'system');
+  // 1 Pulse for Success
+  Haptic.trigger('short');
+  Speech.speak("Authentication successful.");
+  logSystem("Biometric authentication succeeded.", "system");
 
   if (onBioSuccessCallback) {
     const cb = onBioSuccessCallback;
@@ -3727,28 +4591,14 @@ function handleBiometricSuccess() {
 }
 
 function handleBiometricFail() {
-  Haptic.trigger('error');
-  Speech.speak('Authentication failed. Try again.');
-  logSystem('Biometric authentication failed.', 'error');
+  // 2 Pulses for Failure
+  Haptic.trigger('error'); // Trigger 2 short vibrations
+  Speech.speak("Authentication failed. Try again.");
+  logSystem("Biometric authentication failed.", "error");
 }
 
-function toggleQuickAccess(open) {
-  const overlay = document.getElementById('quickAccessOverlay');
-  if (!overlay) return;
-  if (open) {
-    overlay.classList.add('active');
-    Speech.speak('Quick access menu open.');
-  } else {
-    overlay.classList.remove('active');
-    Speech.speak('Quick access closed.');
-  }
-}
-
-function handleQuickAccessNavigation(gesture) {
-  if (gesture === 'swipeUp' || gesture === 'longPress') {
-    toggleQuickAccess(false);
-  }
-}
+// NOTE: The full toggleQuickAccess() and handleQuickAccessNavigation() implementations
+// are defined in section 12 below. These stubs have been removed to avoid confusion.
 
 // ==========================================
 // 12. RUN INITIALIZATIONS & SPATIAL SLIDER
@@ -3891,9 +4741,38 @@ function renderQuickAccessItems() {
           icon: rawIcon,
           action: () => {
             if (match.type === 'call') {
-              startActiveCall({ name: match.targetName || 'Contact', phone: match.targetPhone || '' });
+              // Bug fix #8: Validate the target contact still exists before calling.
+              // Previously, if the contact was deleted after the shortcut was created,
+              // the call would silently use a blank phone number.
+              const targetContact = state.db.contacts.find(c => c.id === match.targetId);
+              if (targetContact) {
+                startActiveCall(targetContact);
+              } else {
+                Haptic.trigger('error');
+                Speech.speak(`Contact for shortcut ${match.name} no longer exists. Please update your Quick Access settings.`);
+              }
+            } else if (match.type === 'message') {
+              // Bug fix #8: Validate the target contact still exists before opening reply.
+              const contactMatch = state.db.contacts.find(c => c.id === match.targetId);
+              if (!contactMatch) {
+                Haptic.trigger('error');
+                Speech.speak(`Contact for shortcut ${match.name} no longer exists. Please update your Quick Access settings.`);
+                return;
+              }
+              const msgIndex = state.db.messages.findIndex(m => m.senderName === contactMatch.name);
+              state.selectedMsgIndex = msgIndex !== -1 ? msgIndex : 0;
+              navigateTo('messagesScreen', 'msgReplyView');
+              renderReplyScreen();
             } else if (match.type === 'navigation') {
-              navigateTo('navigationScreen', 'navActiveRoutingView');
+              // Bug fix #8: Validate the saved place still exists before navigating.
+              const targetPlace = (state.db.savedPlaces || []).find(p => p.id === match.targetId);
+              if (targetPlace) {
+                selectedSavedPlace = targetPlace;
+                navigateTo('navigationScreen', 'navActiveRoutingView');
+              } else {
+                Haptic.trigger('error');
+                Speech.speak(`Saved place for shortcut ${match.name} no longer exists. Please update your Quick Access settings.`);
+              }
             } else {
               navigateTo('mainMenuScreen');
             }
@@ -3958,7 +4837,7 @@ function toggleQuickAccess(show) {
 function handleQuickAccessNavigation(gesture) {
   const items = state.qaItems || [];
   if (!items || items.length === 0) {
-    if (gesture === 'longPress' || gesture === 'swipeUp') {
+    if (gesture === 'longPress' || gesture === 'swipeUp' || gesture === 'swipeLeft') {
       toggleQuickAccess(false);
     }
     return;
@@ -3966,12 +4845,12 @@ function handleQuickAccessNavigation(gesture) {
 
   const total = items.length;
 
-  if (gesture === 'swipeDown') {
+  if (gesture === 'swipeRight') {
     state.focusedIndex = (state.focusedIndex + 1) % total;
     renderQuickAccessItems();
     Haptic.trigger('short');
     Speech.speak(`${items[state.focusedIndex].name}, ${state.focusedIndex + 1} of ${total}`);
-  } else if (gesture === 'swipeUp') {
+  } else if (gesture === 'swipeLeft') {
     state.focusedIndex = (state.focusedIndex - 1 + total) % total;
     renderQuickAccessItems();
     Haptic.trigger('short');
@@ -4005,6 +4884,38 @@ window.onload = () => {
       handleBiometricSuccess();
     });
   }
+
+  // Active Call Screen Action Button Event Listeners
+  const btnMute = document.getElementById('btnToggleMute');
+  if (btnMute) {
+    btnMute.addEventListener('click', () => {
+      state.isMuted = !state.isMuted;
+      Haptic.trigger('short');
+      btnMute.classList.toggle('active', state.isMuted);
+      Speech.speak(`Microphone ${state.isMuted ? 'Muted' : 'Active'}`);
+      logSystem(`Call audio state: ${state.isMuted ? 'Muted' : 'Unmuted'}`, 'action');
+    });
+  }
+
+  const btnSpeaker = document.getElementById('btnToggleSpeaker');
+  if (btnSpeaker) {
+    btnSpeaker.addEventListener('click', () => {
+      state.isSpeakerphone = !state.isSpeakerphone;
+      Haptic.trigger('success');
+      btnSpeaker.classList.toggle('active', state.isSpeakerphone);
+      Speech.speak(`Speakerphone ${state.isSpeakerphone ? 'On' : 'Off'}`);
+      logSystem(`Call speakerphone state: ${state.isSpeakerphone ? 'On' : 'Off'}`, 'action');
+    });
+  }
+
+  const btnEnd = document.getElementById('btnEndCall');
+  if (btnEnd) {
+    btnEnd.addEventListener('click', () => {
+      endCall();
+    });
+  }
+
+  // Simulation and devicemotion listeners are bound in GestureManager.init() below
 
   if (typeof GestureManager !== 'undefined' && GestureManager.init) GestureManager.init();
   if (typeof Handwriting !== 'undefined' && Handwriting.init) Handwriting.init();

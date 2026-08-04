@@ -18,6 +18,15 @@
 </head>
 
 <body>
+  <!-- ============================================================
+       ARIA LIVE REGIONS — screen reader announcement layer
+       These are visually hidden but announced by TalkBack / VoiceOver.
+       Speech.speak() mirrors text here so native screen readers
+       don't collide with the Web Speech API synthesiser.
+  ============================================================ -->
+  <div id="accessibilityAnnouncer" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"
+    aria-relevant="text"></div>
+  <div id="statusAnnouncer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="workspace-bg">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -47,15 +56,19 @@
           <div class="power-button button-physical"></div>
 
           <!-- Screen Screen Content -->
-          <div class="phone-screen" id="phoneScreen">
+          <!-- role=application tells screen readers that custom gestures
+               override their default swipe/tap interactions inside this element -->
+          <div class="phone-screen" id="phoneScreen" role="application" aria-label="BlindEye phone simulator">
             <!-- Privacy Screen overlay (For Privacy Mode) -->
+            <!-- SECURITY NOTE: This overlay is intentionally blank (pure black).
+                 All communication happens via TTS/haptics only.
+                 The sr-only span is readable by TalkBack/VoiceOver but not visible. -->
             <div class="privacy-overlay" id="privacyOverlay">
-              <div class="privacy-info">
-                <i class="fa-solid fa-lock privacy-icon"></i>
-                <p>Privacy Mode Active</p>
-                <span>Screen dimmed for security. Listen to voice instructions or feel haptics.</span>
-              </div>
+              <span class="sr-only" aria-live="polite">
+                Privacy mode active. Screen is secured. Listen for voice instructions.
+              </span>
             </div>
+
 
             <!-- Welcome/Initial screen -->
             <div class="screen-view active" id="welcomeScreen">
@@ -109,7 +122,7 @@
                 <div class="module-title-bar">
                   <i class="fa-solid fa-comment-sms"></i> Messages
                 </div>
-                <div class="module-cards-container single-focus-container" id="msgThreadsContainer">
+                <div class="module-cards-container single-focus-container" id="msgListContainer">
                   <div class="single-focus-msg-card focused">
                     <div class="msg-card-top-bar">
                       <span class="msg-unread-tag"><i class="fa-solid fa-circle"></i> NEW</span>
@@ -130,15 +143,13 @@
               </div>
 
               <!-- Submodule: Message Detail View (Privacy Mode & Inline Input) -->
-              <!-- <div class="sub-screen" id="msgDetailView">
-                <div class="privacy-blackout-card" id="privacyBlackoutCard">
-                  <div class="privacy-shield-icon" id="privacyShieldIcon">
-                    <i class="fa-solid fa-user-shield"></i>
-                  </div>
-                  <h2 class="privacy-title" id="privacyTitle">PRIVACY MODE ACTIVE</h2>
-                  <p class="privacy-subtitle" id="privacySubtitle">Screen protected • Speak or tap to reply</p>
+              <div class="sub-screen" id="msgDetailView"
+                style="background: #000000 !important; width: 100%; height: 100%;">
+                <div class="module-cards-container single-focus-container" id="msgDetailContainer"
+                  style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: #000000 !important; border: none !important; box-shadow: none !important;">
+                  <!-- Rendered dynamically -->
                 </div>
-              </div> -->
+              </div>
 
               <!-- Submodule: Reply Screen -->
               <div class="sub-screen" id="msgReplyView">
@@ -253,16 +264,20 @@
               </div>
 
               <!-- Submodule: Handwriting Dialer -->
-              <div class="sub-screen" id="handwritingDialerView">
-                <div class="handwriting-header">
+              <div class="sub-screen" id="handwritingDialerView"
+                style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 8px 16px 12px; box-sizing: border-box; overflow: hidden; height: 100%;">
+                <!-- Number display + instruction, fixed height at top -->
+                <div class="handwriting-header" style="width: 100%; flex-shrink: 0;">
                   <div class="handwriting-number-log" id="dialerNumberLog">No number</div>
                   <div class="handwriting-helper-hint">Draw a digit (0-9) on the screen</div>
                 </div>
-                <canvas class="handwriting-canvas" id="handwritingCanvas"></canvas>
-                <div class="hero-card-footer-hint"
-                  style="color: #FFCC00; font-size: 0.8rem; font-weight: 700; text-align: center; margin-top: 8px;">
-                  [ Swipe Left: Delete Digit • Double Tap: Call • Long Press: Back ]
-                </div>
+                <!-- Canvas fills remaining space between header and footer hint.
+                     flex: 1 + min-height: 0 is the correct pattern for flex children
+                     that must shrink to fit — avoids overflow into the nav zone. -->
+                <canvas class="handwriting-canvas" id="handwritingCanvas"
+                  style="width: 100%; flex: 1; min-height: 0; border: 2px solid #FFCC00; border-radius: 16px; box-shadow: 0 0 14px rgba(255,204,0,0.3); background: #000; display: block; box-sizing: border-box !important;"></canvas>
+                <!-- Footer hint, aligned standard to match hero card spacing -->
+
               </div>
             </div>
 
@@ -495,10 +510,19 @@
                 </div>
               </div>
 
+              <!-- Submodule: Emergency Settings -->
+              <div class="sub-screen" id="emergencySettingsView">
+                <div class="module-title-bar" style="display:none;">Emergency Contacts</div>
+                <div class="emergency-settings-wrapper" id="emergencySettingsContainer"
+                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <!-- Dynamically rendered emergency contacts -->
+                </div>
+              </div>
+
             </div>
 
             <!-- Tutorial Screen -->
-            <div class="screen-view" id="tutorialScreen">
+            <div class="screen-view" id="gestureTrainingScreen">
               <div class="tutorial-wrapper">
                 <div class="tutorial-header">
                   <div class="tut-step-dot active"></div>
@@ -518,20 +542,39 @@
             </div>
 
             <!-- Incoming Call overlay screen -->
-            <div id="incomingCallScreen" class="screen-view hidden">
-              <div class="single-focus-card incoming-card">
-                <div class="card-header-line">
-                  <span class="card-category-tag">[ INCOMING CALL ]</span>
-                  <i class="fa-solid fa-phone-incoming pulsing-icon"></i>
+            <div id="incomingCallScreen" class="screen-view">
+              <div class="hero-card incoming-call-card"
+                style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; margin: 0 auto; box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);">
+
+                <!-- Card Header -->
+                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem; letter-spacing: 1px;">[ INCOMING
+                    CALL ]</span>
+                  <i class="fa-solid fa-phone-incoming pulsing-icon" style="color: #00E5FF; font-size: 1.2rem;"></i>
                 </div>
-                <div class="caller-avatar-circle">
-                  <i class="fa-solid fa-user"></i>
+
+                <!-- Caller Center Info -->
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                  <div class="caller-avatar-circle"
+                    style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.1);">
+                    <i class="fa-solid fa-user" style="font-size: 2.8rem; color: #00E5FF;"></i>
+                  </div>
+                  <div style="text-align: center;">
+                    <h2 id="incomingCallerName"
+                      style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase;">
+                      Brother</h2>
+                    <p id="incomingCallerNumber"
+                      style="color: #FFFFFF; font-size: 1.1rem; font-weight: 600; margin: 8px 0 0 0; font-family: monospace;">
+                      +389 71 987 654</p>
+                  </div>
                 </div>
-                <h2 id="incomingCallerName" class="hero-title">Brother</h2>
-                <p id="incomingCallerNumber" class="hero-subtitle">+389 71 987 654</p>
-                <div class="card-footer-hint">
-                  <span>[ Double Tap: Answer • Long Press: Decline ]</span>
+
+                <!-- Action Hint Footer -->
+                <div style="border-top: 1px dashed #444; width: 100%; padding-top: 14px; text-align: center;">
+                  <span style="color: #00E5FF; font-size: 0.85rem; font-weight: 800;">[ Double Tap: Answer • Long Press:
+                    Decline ]</span>
                 </div>
+
               </div>
             </div>
 
@@ -545,6 +588,19 @@
                 <div class="call-duration" id="activeCallTimer">00:04</div>
                 <div class="call-status" id="activeCallStatus">Active Call</div>
                 <div class="active-call-actions">
+                  <div class="call-action-row"
+                    style="display: flex; gap: 16px; justify-content: center; margin-bottom: 14px; width: 100%;">
+                    <button class="call-action-btn" id="btnToggleMute"
+                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 72px; height: 72px; border-radius: 50%; border: 2px solid #444; background: #111; color: #CCCCCC; font-size: 0.72rem; font-weight: 700; cursor: pointer; text-transform: uppercase;">
+                      <i class="fa-solid fa-microphone-slash"></i>
+                      <span>Mute</span>
+                    </button>
+                    <button class="call-action-btn" id="btnToggleSpeaker"
+                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 72px; height: 72px; border-radius: 50%; border: 2px solid #444; background: #111; color: #CCCCCC; font-size: 0.72rem; font-weight: 700; cursor: pointer; text-transform: uppercase;">
+                      <i class="fa-solid fa-volume-high"></i>
+                      <span>Speaker</span>
+                    </button>
+                  </div>
                   <button class="end-call-btn" id="btnEndCall">
                     <i class="fa-solid fa-phone-slash"></i> Double Tap: End Call
                   </button>
@@ -556,7 +612,8 @@
             <div class="screen-view" id="sosScreen">
               <div class="sos-container">
                 <!-- Phase 1: Countdown UI -->
-                <div id="sosCountdownContainer" class="sos-phase-countdown" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%;">
+                <div id="sosCountdownContainer" class="sos-phase-countdown"
+                  style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%;">
                   <div class="sos-header">
                     <div class="sos-icon-ring animate-ping"></div>
                     <i class="fa-solid fa-triangle-exclamation sos-bell"></i>
@@ -573,19 +630,17 @@
                       <i class="fa-solid fa-triangle-exclamation"></i>
                       <span>EMERGENCY ALERT</span>
                     </div>
-                    
-                    <h1 class="sos-main-statement">I AM BLIND.<br>I NEED HELP.</h1>
-                    
+
+                    <h1 class="sos-main-statement">I HAVE A DISABILITY.<br>I NEED HELP.</h1>
+
                     <p class="sos-sub-statement">Emergency SMS & GPS location dispatched.</p>
-                    
+
                     <div class="sos-contact-box">
                       <span class="contact-box-label">PLEASE CONTACT EMERGENCY NUMBER:</span>
                       <h3 id="sosEmergencyContactDisplay" class="contact-box-number">Brother (+389 71 987 654)</h3>
                     </div>
 
-                    <div class="sos-footer-hint">
-                      [ Hold Screen to Cancel Alarm ]
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -599,25 +654,14 @@
               </div>
               <div class="qa-list-container" id="quickAccessListContainer"></div>
               <div class="qa-footer-hint">
-                <span>[ Swipe Up/Down: Navigate • Double Tap: Execute • Long Press: Close ]</span>
+                <span>[ Swipe Left/Right: Navigate • Double Tap: Execute • Long Press: Close ]</span>
               </div>
             </div>
 
             <!-- Biometric Authentication Overlay (Full-Screen Touch Zone) -->
-            <div class="biometric-overlay" id="biometricOverlay">
-              <div class="biometric-modal">
-                <div class="bio-icon-circle">
-                  <i class="fa-solid fa-fingerprint bio-fingerprint-icon"></i>
-                </div>
-                <h2 class="bio-touch-instruction">PLACE FINGER ANYWHERE ON SCREEN</h2>
-                <h3 class="bio-title" id="bioPromptTitle">Manage SOS Contacts</h3>
-                <p class="bio-description" id="bioPromptText">Biometric credential required to alter emergency contacts
-                  list.</p>
-                <div class="bio-buttons">
-                  <button class="bio-btn success" id="btnSimulateBioSuccess">Succeed</button>
-                  <button class="bio-btn fail" id="btnSimulateBioFail">Fail</button>
-                </div>
-              </div>
+            <div class="biometric-overlay" id="biometricOverlay"
+              style="background: #000000; position: absolute; inset: 0; z-index: 9999; display: none; width: 100%; height: 100%;">
+              <span class="sr-only">Biometric Screen Active. Touch anywhere on screen to authenticate.</span>
             </div>
 
             <!-- Global Swipe Navigation Area (hidden on welcome screen, visible on inner screens) -->

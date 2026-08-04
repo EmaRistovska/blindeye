@@ -53,6 +53,23 @@ body {
   flex-direction: column;
 }
 
+/* ============================================================
+   SCREEN-READER UTILITY — visually hidden, announced by AT
+   Standard .sr-only pattern (Bootstrap / WCAG compliant)
+============================================================ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
 /* Moving Space Gradient Orbs */
 .workspace-bg {
   position: fixed;
@@ -1378,12 +1395,14 @@ body {
 
 #contactsContainer .single-focus-card {
   position: absolute !important;
-  top: 4px !important;
-  left: 4px !important;
-  width: calc(100% - 8px) !important;
-  height: calc(100% - 8px) !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: auto !important;
+  width: calc(100% - 32px) !important;
+  height: calc(100% - 64px) !important;
   box-sizing: border-box !important;
-  margin: 0 !important;
   background: #000000;
   border: 2px solid #FFCC00 !important;
   border-radius: 18px !important;
@@ -1485,7 +1504,7 @@ body {
 }
 
 #contactsContainer .menu-carousel-dots {
-  bottom: 48px !important;
+  bottom: 8px !important;
 }
 
 #contactsContainer .menu-item-card.focused .contact-avatar {
@@ -1676,10 +1695,10 @@ body {
   margin: 0 !important;
   width: 100%;
   height: 100%;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
   text-align: center;
   touch-action: none;
@@ -1905,8 +1924,7 @@ body {
 }
 
 #navResultsContainer {
-  height: calc(100vh - 220px);
-  max-height: 68%;
+  height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -2126,7 +2144,7 @@ body {
 
 .handwriting-canvas {
   width: 100%;
-  height: 260px;
+  height: 380px;
   background-color: #020617;
   border: 2px solid var(--panel-border);
   border-radius: 18px;
@@ -2284,26 +2302,31 @@ body {
   position: relative;
   width: 100px;
   height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 51, 51, 0.15);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto 10px auto;
+}
+
+.sos-bell {
+  color: #FF3333 !important;
+  font-size: 3rem !important;
+  position: relative;
+  z-index: 2;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  display: block !important;
 }
 
 .sos-icon-ring {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   border-radius: 50%;
-  background-color: var(--accent-danger);
-  opacity: 0.25;
-}
-
-.sos-bell {
-  font-size: 3rem;
-  color: var(--accent-danger);
-  line-height: 100px;
-  position: relative;
-  z-index: 5;
-  animation: shakeBell 0.5s infinite alternate ease-in-out;
+  border: 2px solid #FF3333;
+  pointer-events: none;
 }
 
 @keyframes shakeBell {
@@ -3478,7 +3501,7 @@ body {
 #contactsContainer .pagination-dots,
 #contactActionsContainer .pagination-dots {
   position: absolute !important;
-  bottom: 82px !important;
+  bottom: 8px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   margin-bottom: 0px !important;
@@ -3517,12 +3540,14 @@ body {
 
 #contactActionsContainer .single-focus-card {
   position: absolute !important;
-  top: 4px !important;
-  left: 4px !important;
-  width: calc(100% - 8px) !important;
-  height: calc(100% - 8px) !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: auto !important;
+  width: calc(100% - 32px) !important;
+  height: calc(100% - 64px) !important;
   box-sizing: border-box !important;
-  margin: 0 !important;
   background: #000000;
   border: 2px solid #FFCC00 !important;
   border-radius: 18px !important;
@@ -3793,4 +3818,80 @@ body {
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 12px;
+}
+
+#skipTutorialBtn {
+  background-color: #000000 !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+#skipTutorialBtn:hover,
+#skipTutorialBtn:active,
+#skipTutorialBtn:focus {
+  background-color: #000000 !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+  box-shadow: none !important;
+}
+
+/* Center hero cards and carousel dots in navigation, recents, favorites, and settings screens */
+#navResultsContainer,
+#favoritesContainer,
+#recentsContainer,
+#navActionsContainer,
+#settingsMenuContainer,
+#accessibilityConfigContainer,
+#quickAccessConfigContainer,
+#quickActionTypeContainer,
+#emergencySettingsContainer {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+#favoritesContainer .hero-card,
+#recentsContainer .hero-card,
+#navActionsContainer .hero-card,
+#settingsMenuContainer .hero-card,
+#accessibilityConfigContainer .hero-card,
+#quickAccessConfigContainer .hero-card,
+#quickActionTypeContainer .hero-card,
+#emergencySettingsContainer .hero-card {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: auto !important;
+  width: calc(100% - 32px) !important;
+  height: calc(100% - 64px) !important;
+  box-sizing: border-box !important;
+}
+
+#favoritesContainer .carousel-dots,
+#recentsContainer .carousel-dots,
+#navActionsContainer .carousel-dots,
+#settingsMenuContainer .carousel-dots,
+#accessibilityConfigContainer .carousel-dots,
+#quickAccessConfigContainer .carousel-dots,
+#quickActionTypeContainer .carousel-dots,
+#emergencySettingsContainer .carousel-dots {
+  position: absolute !important;
+  bottom: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
 }
