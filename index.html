@@ -73,14 +73,14 @@
             <!-- Welcome/Initial screen -->
             <div class="screen-view active" id="welcomeScreen">
               <div class="welcome-card">
-                <br></br><br></br><br></br><br></br><br></br>
+                <div style="margin-top: 40px;"></div>
                 <i class="fa-solid fa-hands-holding-child welcome-logo"></i>
                 <h2>Welcome to BlindEye</h2>
                 <!-- <p id="welcomeSubtext">An accessible system for visually impaired users.</p> -->
                 <!-- <button class="welcome-btn primary-btn" id="startTutorialBtn">
                   <i class="fa-solid fa-rotate-left"></i> Restart Tutorial
                 </button> -->
-                <br></br><br></br><br></br><br></br>
+                <div style="margin-top: 20px;"></div>
                 <button class="welcome-btn secondary-btn" id="skipTutorialBtn">
                   Go to Main Menu Now
                 </button>
@@ -89,7 +89,7 @@
 
             <!-- Tutorial / Calibration screen -->
             <div class="screen-view" id="tutorialScreen"
-              style="background: #000000; position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
+              style="background: #000000; position: relative; width: 100%; height: 100%; flex-direction: column;">
               <div class="tutorial-header"
                 style="padding: 16px 20px; text-align: center; border-bottom: 1px dashed #444; flex-shrink: 0;">
                 <h2 style="color: #FFCC00; font-size: 1.3rem; margin: 0; font-weight: 800; text-transform: uppercase;">
@@ -110,7 +110,7 @@
 
             <!-- Main Menu screen -->
             <div class="screen-view" id="mainMenuScreen"
-              style="background: #000000; position: relative; width: 100%; height: 100%; display: flex; flex-direction: column;">
+              style="background: #000000; position: relative; width: 100%; height: 100%; flex-direction: column;">
               <canvas class="handwriting-canvas" id="handwritingMenuCanvas"
                 style="width: 100%; height: 100%; display: block; background: #000000; touch-action: none;"></canvas>
             </div>
@@ -366,8 +366,7 @@
                       <h2
                         style="color: #FFCC00; font-size: 2rem; margin: 0; font-weight: 800; text-transform: uppercase;">
                         ENTER DESTINATION</h2>
-                      <p style="color: #FFFFFF; font-size: 1rem; text-align: center; margin: 0;">Search address via
-                        voice or typing</p>
+
                     </div>
 
                     <!-- Card Footer -->
@@ -393,7 +392,6 @@
                     <i class="fa-solid fa-microphone"></i>
                   </div>
                   <h2 class="nav-dest-title" id="navDestTitle">ENTER DESTINATION</h2>
-                  <p class="nav-dest-subtitle" id="navDestSubtitle">Speak or tap Morse code to search</p>
                 </div>
               </div>
 
@@ -693,7 +691,7 @@
               <div class="haptic-ripple" id="hapticRippleRing"></div>
               <div class="haptic-center-core" id="hapticCenterDot"></div>
             </div>
-            <div class="vibration-symbol-log" id="vibeSymbolText">No signal</div>
+            <div class="vibration-symbol-log" id="vibeSymbolText">Haptic: Idle</div>
           </div>
 
           <div class="visualizer-box">

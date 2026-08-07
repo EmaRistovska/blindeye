@@ -122,9 +122,6 @@ function loadDb() {
   }
 }
 
-// Bootstrap: load DB immediately so state.db is always populated
-loadDb();
-
 function saveDb() {
   localStorage.setItem('blindtouch_db', JSON.stringify(state.db));
   logSystem('LocalStorage database updated.');
@@ -175,6 +172,8 @@ const Speech = {
       if (logEl) logEl.innerText = `[MUTED] ${text}`;
       return;
     }
+
+    state.lastSpeechText = text;
 
     if (interrupt && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
@@ -715,15 +714,12 @@ const GestureManager = {
         state.tapCount = 0;
         state.lastTapTime = null;
         state.gestureStart = null;
-        console.log("Tap registered at RelY:", relY, "RelX:", relX, "Gesture:", "tripleTap");
         this.handleGesture('tripleTap', startX, startY);
         this.isTwoFingerGesture = false;
         return;
       }
 
       state.tapTimer = setTimeout(() => {
-        const resolvedGesture = state.tapCount === 2 ? 'doubleTap' : 'tap';
-        console.log("Tap registered at RelY:", relY, "RelX:", relX, "Gesture:", resolvedGesture);
         if (state.tapCount === 2) {
           this.handleGesture('doubleTap', startX, startY);
         } else if (state.tapCount === 1) {
@@ -740,7 +736,6 @@ const GestureManager = {
 
     state.gestureStart = null;
     if (gesture) {
-      console.log("Tap registered at RelY:", relY, "RelX:", relX, "Gesture:", gesture);
       this.handleGesture(gesture, startX, startY);
     }
     this.isTwoFingerGesture = false;
@@ -1286,11 +1281,11 @@ function navigateTo(screenId, subScreenId = null) {
     clearTimeout(welcomeTimer);
     welcomeTimer = null;
   }
-  if (typeof routingSimulationTimer !== 'undefined' && routingSimulationTimer) {
+  if (routingSimulationTimer) {
     clearInterval(routingSimulationTimer);
     routingSimulationTimer = null;
   }
-  if (typeof incomingCallInterval !== 'undefined' && incomingCallInterval) {
+  if (incomingCallInterval) {
     clearInterval(incomingCallInterval);
     incomingCallInterval = null;
   }
@@ -1302,11 +1297,11 @@ function navigateTo(screenId, subScreenId = null) {
     clearTimeout(state.tapTimer);
     state.tapTimer = null;
   }
-  if (typeof morseTimer !== 'undefined' && morseTimer) {
+  if (morseTimer) {
     clearTimeout(morseTimer);
     morseTimer = null;
   }
-  if (typeof navMorseTimer !== 'undefined' && navMorseTimer) {
+  if (navMorseTimer) {
     clearTimeout(navMorseTimer);
     navMorseTimer = null;
   }
@@ -1746,7 +1741,7 @@ function renderMessagesList() {
       <!-- Timestamp & Status Badge Row -->
       <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 204, 0, 0.05); border: 1px solid #333; border-radius: 12px; padding: 12px 14px; box-sizing: border-box;">
         <span style="color: #FFFFFF; font-size: 0.95rem; font-weight: 700; font-family: monospace;">
-          <i class="fa-regular fa-clock" style="color: #FFCC00; margin-right: 6px;"></i>${current.timestamp || '12:05'}
+          <i class="fa-regular fa-clock" style="color: #FFCC00; margin-right: 6px;"></i>${current.time || current.timestamp || '??:??'}
         </span>
         <span style="font-size: 0.8rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; ${current.unread ? 'background: #FFCC00; color: #000000;' : 'background: #222222; color: #888888; border: 1px solid #444;'}">
           ${current.unread ? 'UNREAD' : 'READ'}
@@ -1871,7 +1866,13 @@ function startInlineVoiceListening() {
       }
     };
 
-    recognition.onerror = () => { };
+    recognition.onerror = (e) => {
+      logSystem(`Inline voice STT error: ${e.error || 'unknown'}`, 'error');
+      if (e.error === 'not-allowed' || e.error === 'audio-capture') {
+        Haptic.trigger('error');
+        Speech.speak('Microphone access denied. Please allow microphone permission and try again.');
+      }
+    };
     recognition.start();
     activeSpeechRecognition = recognition;
   } catch (e) { }
@@ -1960,7 +1961,7 @@ function sendSMSMessageInline(text, customTTS) {
   const ttsMessage = customTTS || `Message sent successfully to ${senderName}`;
 
   Haptic.trigger('success');
-  Haptic.trigger('success');
+  setTimeout(() => Haptic.trigger('success'), 150);
   Speech.speak(ttsMessage);
   logSystem(`SMS sent to ${senderName}: "${text}"`, 'sms');
 
@@ -2067,7 +2068,14 @@ function startSpeechToTextInput() {
 
     recognition.onerror = (e) => {
       if (micRing) micRing.classList.remove('listening');
-      if (statusText) statusText.innerText = 'Speech error occurred.';
+      if (statusText) statusText.innerText = 'Speech error. Try again.';
+      Haptic.trigger('error');
+      logSystem(`STT error: ${e.error || 'unknown'}`, 'error');
+      if (e.error === 'not-allowed' || e.error === 'audio-capture') {
+        Speech.speak('Microphone access denied. Please allow microphone permission.');
+      } else {
+        Speech.speak('Voice input error. Please try again.');
+      }
     };
 
     recognition.start();
@@ -2230,8 +2238,9 @@ function initMorseInput() {
   if (!pad) return;
 
   let touchStartTime = 0;
-  pad.onmousedown = (e) => { e.stopPropagation(); touchStartTime = Date.now(); };
-  pad.onmouseup = (e) => {
+
+  const onPadStart = (e) => { e.stopPropagation(); touchStartTime = Date.now(); };
+  const onPadEnd = (e) => {
     e.stopPropagation();
     const duration = Date.now() - touchStartTime;
     const symbol = duration < MORSE_INPUT.DOT_THRESHOLD ? '.' : '-';
@@ -2243,6 +2252,14 @@ function initMorseInput() {
     if (morseTimer) clearTimeout(morseTimer);
     morseTimer = setTimeout(decodeMorseLetter, 800);
   };
+
+  // Desktop (mouse) events
+  pad.onmousedown = onPadStart;
+  pad.onmouseup = onPadEnd;
+
+  // Mobile (touch) events — required for real device use
+  pad.ontouchstart = (e) => { e.preventDefault(); onPadStart(e); };
+  pad.ontouchend = (e) => { e.preventDefault(); onPadEnd(e); };
 
   Speech.speak('Morse keyboard active. Tap for dot, hold for dash. Swipe up or double tap to send reply.');
 }
@@ -3305,7 +3322,6 @@ function renderNavigationMenu() {
             <i class="fa-solid ${current.icon}" style="font-size: 2.6rem; color: #FFCC00;"></i>
           </div>
           <h2 style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
-          <p style="color: #FFFFFF; font-size: 1rem; text-align: center; margin: 4px 0 0 0;">${current.subtitle}</p>
         </div>
         <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
           <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Select • Swipe: Next ]</span>
@@ -3362,7 +3378,15 @@ function startNavigationSpeechSearch() {
       }
     };
 
-    recognition.onerror = () => { };
+    recognition.onerror = (e) => {
+      logSystem(`Nav STT error: ${e.error || 'unknown'}`, 'error');
+      if (e.error === 'not-allowed' || e.error === 'audio-capture') {
+        Haptic.trigger('error');
+        Speech.speak('Microphone access denied. You can also tap Morse code to enter your destination.');
+      } else {
+        Speech.speak('Voice input error. Tap Morse code or swipe right for a default destination.');
+      }
+    };
     recognition.start();
     navSpeechRecognition = recognition;
   } catch (e) { }
@@ -3497,7 +3521,7 @@ function renderNavigationActions() {
           <i class="fa-solid ${current.icon}" style="font-size: 1.8rem; color: #FFCC00;"></i>
         </div>
         <h2 style="color: #FFCC00; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1;">${current.name}</h2>
-        <p style="color: #FFFFFF; font-size: 0.95rem; text-align: center; margin: 0; line-height: 1.3;">${current.subtitle}</p>
+        
       </div>
       <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
         <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">${current.hint}</span>
@@ -3705,7 +3729,9 @@ function handleNavigationGesture(gesture) {
   }
   else if (state.currentSubScreen === 'navDestinationInputView') {
     if (gesture === 'swipeRight' || gesture === 'doubleTap') {
-      confirmNavDestination('Eurofarm Pharmacy Center');
+      // Use Morse or voice input if available, otherwise fall back to default demo destination
+      const dest = navMorseText || 'Eurofarm Pharmacy Center';
+      confirmNavDestination(dest);
     } else if (gesture === 'longPress') {
       if (navSpeechRecognition) {
         try { navSpeechRecognition.stop(); } catch (e) { }
@@ -4540,7 +4566,7 @@ function dispatchSOSAlerts() {
     contactDisplay.innerText = `${emergencyContact.name} (${emergencyContact.phone})`;
   }
 
-  Speech.speak('S O S Alert dispatched. Displaying emergency statement: I have a disability. I need help.');
+  Speech.speak('S O S Alert dispatched. Displaying emergency statement.');
 }
 
 // ==========================================
@@ -4558,6 +4584,11 @@ function triggerBiometricAuth(title, text, onSuccessCallback) {
     overlay.classList.add('active');
   }
 
+  const screen = document.getElementById('phoneScreen');
+  if (screen) {
+    screen.classList.add('auth-required');
+  }
+
   // Non-visual voice guidance
   Speech.speak("Authentication required. Place your finger anywhere on the screen.");
 
@@ -4572,22 +4603,41 @@ function triggerBiometricAuth(title, text, onSuccessCallback) {
 
 function handleBiometricSuccess() {
   const overlay = document.getElementById('biometricOverlay');
+  const screen = document.getElementById('phoneScreen');
+
+  // Trigger visual green transition
   if (overlay) {
-    overlay.style.display = 'none';
-    overlay.classList.remove('active');
-    overlay.onclick = null;
+    overlay.classList.add('success');
+  }
+  if (screen) {
+    screen.classList.add('auth-success');
   }
 
-  // 1 Pulse for Success
-  Haptic.trigger('short');
+  // Play success sound chime (connected tone) & double vibration feedback
+  Haptic.playSound('connected');
+  Haptic.trigger('success');
+
   Speech.speak("Authentication successful.");
   logSystem("Biometric authentication succeeded.", "system");
 
-  if (onBioSuccessCallback) {
-    const cb = onBioSuccessCallback;
-    onBioSuccessCallback = null;
-    cb();
-  }
+  // Keep green border visible for 800ms before removing overlay
+  setTimeout(() => {
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('active', 'success');
+      overlay.onclick = null;
+    }
+
+    if (screen) {
+      screen.classList.remove('auth-required', 'auth-success');
+    }
+
+    if (onBioSuccessCallback) {
+      const cb = onBioSuccessCallback;
+      onBioSuccessCallback = null;
+      cb();
+    }
+  }, 800);
 }
 
 function handleBiometricFail() {
@@ -4877,13 +4927,9 @@ window.onload = () => {
   const bioFail = document.getElementById('btnSimulateBioFail');
   if (bioFail) bioFail.addEventListener('click', handleBiometricFail);
 
-  const bioOverlay = document.getElementById('biometricOverlay');
-  if (bioOverlay) {
-    bioOverlay.addEventListener('click', (e) => {
-      if (e.target.closest('.bio-btn')) return;
-      handleBiometricSuccess();
-    });
-  }
+  // NOTE: The biometric overlay click handler is managed exclusively by triggerBiometricAuth()
+  // via overlay.onclick assignment. A second addEventListener here would cause the callback
+  // to fire twice. The overlay element exists for the simulator Bio Lock button only.
 
   // Active Call Screen Action Button Event Listeners
   const btnMute = document.getElementById('btnToggleMute');
@@ -4919,6 +4965,18 @@ window.onload = () => {
 
   if (typeof GestureManager !== 'undefined' && GestureManager.init) GestureManager.init();
   if (typeof Handwriting !== 'undefined' && Handwriting.init) Handwriting.init();
+
+  // Catch first user interaction to unblock browser Audio/SpeechSynthesis
+  const handleFirstInteraction = () => {
+    if (state.lastSpeechText) {
+      // Re-trigger the last spoken text now that user gesture has activated audio context
+      Speech.speak(state.lastSpeechText);
+    }
+    document.removeEventListener('click', handleFirstInteraction);
+    document.removeEventListener('touchstart', handleFirstInteraction);
+  };
+  document.addEventListener('click', handleFirstInteraction);
+  document.addEventListener('touchstart', handleFirstInteraction);
 
   navigateTo('welcomeScreen');
 };

@@ -351,6 +351,35 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.phone-screen.auth-required {
+  box-shadow: inset 0 0 30px rgba(255, 51, 51, 0.4) !important;
+}
+
+.biometric-overlay.active::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  border: 4px solid #ff3333;
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(255, 51, 51, 0.6), inset 0 0 15px rgba(255, 51, 51, 0.6);
+  pointer-events: none;
+  z-index: 10001;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.biometric-overlay.active.success::before {
+  border-color: #00ff00 !important;
+  box-shadow: 0 0 15px #00ff00, inset 0 0 15px #00ff00 !important;
+}
+
+.phone-screen.auth-success {
+  box-shadow: inset 0 0 30px rgba(0, 255, 0, 0.4) !important;
 }
 
 .screen-view {
@@ -471,6 +500,10 @@ body {
   50% {
     opacity: 1;
   }
+}
+
+#welcomeScreen {
+  padding: 24px;
 }
 
 /* Welcome Screen Card */
