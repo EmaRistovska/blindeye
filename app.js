@@ -175,6 +175,21 @@ const Speech = {
 
     state.lastSpeechText = text;
 
+    const rawMode = state.db && state.db.settings && state.db.settings.readingMode;
+    const readingMode = rawMode ? rawMode.toLowerCase() : 'voice';
+
+    if (readingMode === 'morse') {
+      logSystem(`[Morse Only]: "${text}"`, 'system');
+      const logEl = document.getElementById('ttsOutputLog');
+      if (logEl) logEl.innerText = `[MORSE ONLY] ${text}`;
+      playMorseString(text);
+      return; // Skip speech synthesis entirely
+    }
+
+    if (readingMode === 'combined') {
+      playMorseString(text);
+    }
+
     if (interrupt && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
     }
@@ -239,6 +254,39 @@ if (btnToggleSpeech) {
 // ==========================================
 // 3. AUDIO & VISUAL HAPTIC SIMULATION
 // ==========================================
+
+// Web Audio API context for offline programmatic audio tone generation (Morse beeps)
+let audioCtx = null;
+
+function playTone(frequency, duration, type = 'sine') {
+  if (state.isMuted) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+    // Smooth envelope ramp-up/down to prevent speaker popping/clicking
+    gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    const volumeSetting = (state.db && state.db.settings && state.db.settings.vibeIntensity) || 'medium';
+    const volume = volumeSetting === 'low' ? 0.1 : volumeSetting === 'high' ? 0.4 : 0.25;
+    
+    gainNode.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.015);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000 - 0.015);
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration / 1000);
+  } catch (e) {
+    console.warn("Web Audio API tone generation failed or blocked:", e);
+  }
+}
 
 const Haptic = {
   trigger: function (patternType) {
@@ -351,16 +399,26 @@ const Haptic = {
   playSound: function (type) {
     if (state.isMuted) return;
     try {
+      // Programmatic sine tone generator for Morse signals — guarantees sound works offline
+      if (type === 'short' || type === 'dot') {
+        playTone(700, 100);
+        return;
+      }
+      if (type === 'long' || type === 'dash') {
+        playTone(700, 300);
+        return;
+      }
+
       let id = 'soundBeepShort';
-      if (type === 'long' || type === 'dash') id = 'soundBeepLong';
-      else if (type === 'ringing') id = 'soundCallRinging';
+      if (type === 'ringing') id = 'soundCallRinging';
       else if (type === 'connected') id = 'soundCallConnected';
       else if (type === 'siren') id = 'soundSiren';
 
       const el = document.getElementById(id);
       if (el) {
         el.currentTime = 0;
-        el.volume = state.db.settings.vibeIntensity === 'low' ? 0.3 : state.db.settings.vibeIntensity === 'high' ? 1.0 : 0.6;
+        const volumeSetting = (state.db && state.db.settings && state.db.settings.vibeIntensity) || 'medium';
+        el.volume = volumeSetting === 'low' ? 0.3 : volumeSetting === 'high' ? 1.0 : 0.6;
         el.play().catch(e => console.log('Audio playback blocked: ', e));
       }
     } catch (e) {
@@ -4968,6 +5026,13 @@ window.onload = () => {
 
   // Catch first user interaction to unblock browser Audio/SpeechSynthesis
   const handleFirstInteraction = () => {
+    // Initialize & resume AudioContext on first user gesture
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
     if (state.lastSpeechText) {
       // Re-trigger the last spoken text now that user gesture has activated audio context
       Speech.speak(state.lastSpeechText);
