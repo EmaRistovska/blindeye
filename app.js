@@ -95,7 +95,9 @@ let state = {
   sosCountdownTimer: null,
   sosCountdownValue: 3,
   sosIsDispatched: false,
-  activeMorseSequence: []
+  activeMorseSequence: [],
+  tutorialMenuIndex: 0,
+  tutorialMockItems: ['MESSAGES', 'PHONE', 'SETTINGS']
 };
 
 // Database helper functions
@@ -165,11 +167,12 @@ function formatPhoneNumberForSpeech(phone) {
 // ==========================================
 
 const Speech = {
-  speak: function (text, interrupt = true) {
+  speak: function (text, interrupt = true, onEndCallback = null) {
     if (state.isMuted || !state.speechEnabled) {
       logSystem(`[Muted Speech]: "${text}"`, 'system');
       const logEl = document.getElementById('ttsOutputLog');
       if (logEl) logEl.innerText = `[MUTED] ${text}`;
+      if (onEndCallback) onEndCallback();
       return;
     }
 
@@ -183,6 +186,9 @@ const Speech = {
       const logEl = document.getElementById('ttsOutputLog');
       if (logEl) logEl.innerText = `[MORSE ONLY] ${text}`;
       playMorseString(text);
+      if (onEndCallback) {
+        setTimeout(onEndCallback, text.length * 150 + 200);
+      }
       return; // Skip speech synthesis entirely
     }
 
@@ -192,6 +198,7 @@ const Speech = {
 
     if (interrupt && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
+      state.activeSpeechId = null;
     }
 
     logSystem(`Speaking: "${text}"`, 'action');
@@ -208,16 +215,28 @@ const Speech = {
     }
 
     utterance.rate = 1.0;
+
+    const currentSpeechId = Date.now() + Math.random();
+    state.activeSpeechId = currentSpeechId;
+
+    if (onEndCallback) {
+      utterance.onend = () => {
+        if (state.activeSpeechId === currentSpeechId) {
+          onEndCallback();
+        }
+      };
+      utterance.onerror = () => {
+        if (state.activeSpeechId === currentSpeechId) {
+          onEndCallback();
+        }
+      };
+    }
+
     window.speechSynthesis.speak(utterance);
 
     // --- ARIA LIVE REGION MIRROR ---
-    // Mirrors the announcement into a visually-hidden assertive ARIA region so
-    // that native screen readers (TalkBack / VoiceOver) can announce the text
-    // through their own pipeline without competing with speechSynthesis.
     const announcer = document.getElementById('accessibilityAnnouncer');
     if (announcer) {
-      // Clear first (in the same frame) then set in the next frame so that
-      // repeated identical strings still trigger a screen reader announcement.
       announcer.textContent = '';
       requestAnimationFrame(() => {
         announcer.textContent = text;
@@ -227,6 +246,7 @@ const Speech = {
 
   stop: function () {
     window.speechSynthesis.cancel();
+    state.activeSpeechId = null;
   }
 };
 
@@ -274,7 +294,7 @@ function playTone(frequency, duration, type = 'sine') {
     gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
     const volumeSetting = (state.db && state.db.settings && state.db.settings.vibeIntensity) || 'medium';
     const volume = volumeSetting === 'low' ? 0.1 : volumeSetting === 'high' ? 0.4 : 0.25;
-    
+
     gainNode.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.015);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000 - 0.015);
 
@@ -597,7 +617,7 @@ const GestureManager = {
       const btn = document.getElementById(id);
       if (btn) {
         btn.addEventListener('click', () => {
-          this.isTwoFingerGesture = (gesture === 'swipeDown');
+          this.isTwoFingerGesture = (gesture === 'swipeDown' || gesture === 'twoFingerTap');
           this.handleGesture(gesture);
         });
       }
@@ -610,6 +630,7 @@ const GestureManager = {
     bindBtn('btnSimulateTap', 'tap');
     bindBtn('btnSimulateDblTap', 'doubleTap');
     bindBtn('btnSimulateLongPress', 'longPress');
+    bindBtn('btnSimulateTwoFingerTap', 'twoFingerTap');
 
     const bioBtn = document.getElementById('btnSimulateBioLock');
     if (bioBtn) bioBtn.addEventListener('click', () => triggerBiometricAuth());
@@ -632,16 +653,7 @@ const GestureManager = {
       }
     });
 
-    const skipTutBtn = document.getElementById('skipTutorialBtn');
-    if (skipTutBtn) {
-      skipTutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (state.db) state.db.tutorialCompleted = true;
-        localStorage.setItem('blindEye_tutorialCompleted', 'true');
-        saveDb();
-        navigateTo('mainMenuScreen');
-      });
-    }
+
 
     const shakeBtn = document.getElementById('btnSimulateShake');
     if (shakeBtn) {
@@ -756,6 +768,70 @@ const GestureManager = {
     }
 
     if (!gesture && duration < 300) {
+      if (state.onboardingActive && state.onboardingStep === ONBOARDING_STEPS.NAV_BAR && state.currentScreen === 'gestureTrainingScreen') {
+        if (phoneEl) {
+          const rect = phoneEl.getBoundingClientRect();
+          const topEdge = rect.height - 160;
+          const bottomEdge = rect.height - 90;
+          const isNavZone = relY >= topEdge && relY <= bottomEdge;
+
+          if (isNavZone) {
+            Haptic.trigger('success');
+            Speech.speak("Correct! You've located the navigation bar. The screen is split into two zones: the bottom third is the Navigation Zone, where you swipe left and right to select menu options. The top two-thirds is the Content Area, where we display cards and details. Let's practice moving between mock menu items.", true, advanceOnboarding);
+          } else {
+            Haptic.trigger('error');
+            if (relY < topEdge) {
+              Speech.speak("That is above the navigation bar. Tap slightly lower.");
+            } else {
+              Speech.speak("That is beneath the navigation bar. Tap slightly higher.");
+            }
+          }
+        }
+        this.isTwoFingerGesture = false;
+        return;
+      }
+
+      if (state.onboardingActive && state.onboardingStep === ONBOARDING_STEPS.CONFIG_VIBE && state.currentScreen === 'onboardingConfigScreen') {
+        if (phoneEl) {
+          const rect = phoneEl.getBoundingClientRect();
+          const topEdge = rect.height - 160;
+          const bottomEdge = rect.height - 90;
+          const isNavZone = relY >= topEdge && relY <= bottomEdge;
+
+          if (isNavZone) {
+            if (!state.db) state.db = { settings: {} };
+            if (!state.db.settings) state.db.settings = {};
+            const options = ['low', 'medium', 'high'];
+            let idx = 1;
+            if (relX < rect.width * 0.33) {
+              idx = 0; // Low
+            } else if (relX > rect.width * 0.66) {
+              idx = 2; // High
+            } else {
+              idx = 1; // Medium
+            }
+            state.db.settings.vibeIntensity = options[idx];
+            saveDb();
+            Haptic.trigger(options[idx] === 'low' ? 'short' : options[idx] === 'medium' ? 'success' : 'long');
+            renderOnboardingStep();
+            Speech.speak(`${options[idx].charAt(0).toUpperCase() + options[idx].slice(1)} haptics.`);
+
+            this.isTwoFingerGesture = false;
+            return;
+          }
+        }
+      }
+
+      if (this.isTwoFingerGesture) {
+        if (state.tapTimer) clearTimeout(state.tapTimer);
+        state.tapCount = 0;
+        state.lastTapTime = null;
+        state.gestureStart = null;
+        this.handleGesture('twoFingerTap', startX, startY);
+        this.isTwoFingerGesture = false;
+        return;
+      }
+
       const now = Date.now();
       if (!state.tapCount) state.tapCount = 0;
 
@@ -802,6 +878,18 @@ const GestureManager = {
   handleGesture: function (gesture, x, y) {
     logSystem(`Gesture: ${gesture} at (${x}, ${y})`, 'input');
     if (gesture === 'tap') Haptic.playSound('short');
+
+    if (state.currentScreen === 'onboardingAuthScreen') {
+      if (gesture === 'tap' || gesture === 'doubleTap') {
+        handleBiometricAuthOnboarding();
+      }
+      return;
+    }
+
+    if (state.onboardingActive && (state.currentScreen === 'gestureTrainingScreen' || state.currentScreen === 'onboardingConfigScreen')) {
+      handleOnboardingGesture(gesture, x, y);
+      return;
+    }
 
     // --- GLOBAL TOP-BAR SPATIAL CHECKS (Works across ALL screens) ---
     const phoneEl = document.getElementById('phoneScreen');
@@ -857,6 +945,28 @@ const GestureManager = {
         endCall();
       } else {
         Haptic.trigger('error');
+      }
+      return;
+    }
+
+    if (gesture === 'twoFingerTap') {
+      Haptic.trigger('success');
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const announceStatus = (batteryStr) => {
+        Speech.speak(`Status. Time is ${timeStr}. Battery is ${announceBatteryStr}. Connection is stable.`);
+      };
+      // Format battery level or fallback
+      let announceBatteryStr = '85 percent';
+      if ('getBattery' in navigator) {
+        navigator.getBattery().then(battery => {
+          const level = Math.round(battery.level * 100);
+          announceBatteryStr = `${level} percent`;
+          announceStatus(announceBatteryStr);
+        }).catch(() => {
+          announceStatus(announceBatteryStr);
+        });
+      } else {
+        announceStatus(announceBatteryStr);
       }
       return;
     }
@@ -920,29 +1030,22 @@ const GestureManager = {
 };
 
 function handleWelcomeGesture(gesture) {
-  const isCompleted = state.db.tutorialCompleted || localStorage.getItem('blindEye_tutorialCompleted') === 'true';
-
-  if (!isCompleted) {
-    if (gesture === 'swipeRight') {
-      Haptic.trigger('success');
-      state.db.tutorialCompleted = true;
-      localStorage.setItem('blindEye_tutorialCompleted', 'true');
-      saveDb();
-      startTutorial();
-    } else if (gesture === 'doubleTap' || gesture === 'tap') {
-      Haptic.trigger('success');
-      state.db.tutorialCompleted = true;
-      localStorage.setItem('blindEye_tutorialCompleted', 'true');
-      saveDb();
-      navigateTo('mainMenuScreen');
-    }
-  } else {
-    if (welcomeTimer) {
-      clearTimeout(welcomeTimer);
-      welcomeTimer = null;
-    }
+  if (gesture === 'swipeRight') {
+    // Quick shortcut: skip straight to main menu (dev / returning user)
     Haptic.trigger('success');
+    state.authenticated = true;
+    if (!state.db) state.db = {};
+    state.db.tutorialCompleted = true;
+    localStorage.setItem('blindEye_tutorialCompleted', 'true');
+    saveDb();
     navigateTo('mainMenuScreen');
+  } else if (gesture === 'swipeLeft') {
+    // Run the full onboarding / tutorial from the beginning
+    Haptic.trigger('success');
+    state.db.tutorialCompleted = false;
+    localStorage.removeItem('blindEye_tutorialCompleted');
+    saveDb();
+    startOnboardingFlow();
   }
 }
 
@@ -953,16 +1056,17 @@ function handleTutorialGesture(gesture) {
     skipCalibrationToVoiceMode();
     return;
   }
-  // Any other gesture: re-announce the current calibration step
+  // Help readouts: double tap to hear progress, single tap to repeat instruction
   const currentLetter = CALIBRATION_LETTERS[calibrationState.letterIdx] || 'M';
   const count = calibrationState.count || 1;
   if (gesture === 'doubleTap') {
     Haptic.trigger('short');
     Speech.speak(`Draw letter ${currentLetter}, ${count} of 3. Long press at any time to skip to voice-only mode.`);
-  } else {
+  } else if (gesture === 'tap') {
     Haptic.trigger('short');
     Speech.speak(`Draw letter ${currentLetter} on the canvas.`);
   }
+  // Swipes are ignored as they represent active drawing lines.
 }
 
 // ==========================================
@@ -989,6 +1093,7 @@ const Handwriting = {
 
     const self = this;
     canvas.onmousedown = (e) => {
+      e.preventDefault();
       const phoneEl = document.getElementById('phoneScreen');
       if (phoneEl) {
         const rect = phoneEl.getBoundingClientRect();
@@ -1000,9 +1105,18 @@ const Handwriting = {
       }
       self.startDraw(e.offsetX, e.offsetY);
     };
-    canvas.onmousemove = (e) => self.draw(e.offsetX, e.offsetY);
-    canvas.onmouseup = () => self.endDraw();
-    canvas.onmouseleave = () => self.endDraw();
+    canvas.onmousemove = (e) => {
+      e.preventDefault();
+      self.draw(e.offsetX, e.offsetY);
+    };
+    canvas.onmouseup = (e) => {
+      e.preventDefault();
+      self.endDraw();
+    };
+    canvas.onmouseleave = (e) => {
+      e.preventDefault();
+      self.endDraw();
+    };
 
     canvas.ontouchstart = (e) => {
       const touch = e.touches[0];
@@ -1422,7 +1536,7 @@ function navigateTo(screenId, subScreenId = null) {
   // 4. Toggle Navigation Area visibility
   const navArea = document.getElementById('navigationArea') || document.getElementById('fixedNavigationArea');
   if (navArea) {
-    if (screenId === 'welcomeScreen' || screenId === 'tutorialScreen' || screenId === 'sosScreen' || screenId === 'activeCallScreen') {
+    if (screenId === 'welcomeScreen' || screenId === 'tutorialScreen' || screenId === 'sosScreen' || screenId === 'activeCallScreen' || screenId === 'onboardingAuthScreen') {
       navArea.style.display = 'none';
     } else {
       navArea.style.display = 'flex';
@@ -1455,23 +1569,17 @@ function onScreenLoaded(screen, subScreen) {
   }
 
   if (screen === 'welcomeScreen') {
-    const isCompleted = state.db.tutorialCompleted || localStorage.getItem('blindEye_tutorialCompleted') === 'true';
-
-    if (!isCompleted) {
-      logSystem('First-time start detected. Swipe Right to begin tutorial.', 'system');
-      Speech.speak('Welcome to BlindEye. Swipe right to start the interactive tutorial, or double tap to go to the Main Menu.');
-    } else {
-      Speech.speak('Welcome to BlindEye.');
-      const subtext = document.getElementById('welcomeSubtext');
-      if (subtext) subtext.innerText = 'Redirecting to Main Menu in 3 seconds...';
-
-      welcomeTimer = setTimeout(() => {
-        navigateTo('mainMenuScreen');
-      }, 2000);
-    }
+    Speech.speak('Welcome to BlindEye. Double tap or swipe right to start interactive setup, or click skip onboarding.');
+  }
+  else if (screen === 'onboardingAuthScreen') {
+    initOnboardingAuth();
+  }
+  else if (screen === 'onboardingConfigScreen') {
+    renderOnboardingStep();
   }
   else if (screen === 'tutorialScreen') {
-    startTutorial();
+    // initTutorialCalibration instead of startTutorial to avoid re-entrant navigateTo loop
+    initTutorialCalibration();
   }
   else if (screen === 'mainMenuScreen') {
     renderMainMenu();
@@ -1548,8 +1656,8 @@ function startTutorial() {
   if (!state.db) state.db = {};
   state.db.letterProfiles = {};
 
+  // Navigate first, then init canvas (onScreenLoaded will call initTutorialCalibration)
   navigateTo('tutorialScreen');
-  initTutorialCalibration();
 }
 
 /**
@@ -1571,8 +1679,12 @@ function skipCalibrationToVoiceMode() {
 }
 
 function initTutorialCalibration() {
-  Handwriting.initCanvas('tutorialCanvas');
-  updateTutorialCalibrationUI(true);
+  // Defer one frame so the tutorialScreen flex layout has been calculated
+  // and the canvas has a non-zero offsetWidth before resizeCanvas runs.
+  requestAnimationFrame(() => {
+    Handwriting.initCanvas('tutorialCanvas');
+    updateTutorialCalibrationUI(true);
+  });
 }
 
 function updateTutorialCalibrationUI(announceSpeech = true) {
@@ -1586,7 +1698,11 @@ function updateTutorialCalibrationUI(announceSpeech = true) {
   if (instructionEl) instructionEl.innerText = `Swipe / Draw letter ${currentLetter} to teach the system your style`;
 
   if (announceSpeech) {
-    Speech.speak(`Tutorial Calibration. Draw letter ${currentLetter}, ${count} of 3.`);
+    let msg = `Tutorial Calibration. Draw letter ${currentLetter}, ${count} of 3.`;
+    if (calibrationState.letterIdx === 0 && count === 1) {
+      msg = `Welcome to handwriting calibration. Before we begin, here is a quick overview of your gestures. For navigation: swipe right to focus the next item, swipe left for the previous item, double-tap to confirm, and long-press to go back. For typing messages: tap for dot, hold for dash, swipe right to insert a space, swipe left to delete a letter, and swipe up to draft your message. In the phone dialer, draw numbers on the screen to dial. Also, remember: you can double-shake the phone at any time to trigger the emergency S O S, or tap with two fingers to hear the current time and battery. Now, please draw the letter ${currentLetter} on the canvas 3 times to calibrate your style, or press and hold the screen to skip to voice-only mode.`;
+    }
+    Speech.speak(msg);
   }
 }
 
@@ -1669,9 +1785,15 @@ const MAIN_MENU_ITEMS = [
   { id: 'set', name: 'Settings', icon: 'fa-sliders', pattern: 'long' }
 ];
 
-function renderMainMenu() {
+function renderMainMenu(announceItemOnly = false) {
   Handwriting.initCanvas('handwritingMenuCanvas');
-  Speech.speak("Main Menu. Draw M for Messages, P for Phone, C for Camera, N for Navigation, or S for Settings.");
+  state.focusedItems = MAIN_MENU_ITEMS;
+
+  if (announceItemOnly) {
+    speakFocusedItem();
+  } else {
+    Speech.speak("Main Menu. Draw M for Messages, P for Phone, C for Camera, N for Navigation, S for Settings, or swipe left and right to navigate.");
+  }
 }
 
 /**
@@ -1725,10 +1847,10 @@ function speakFocusedItem() {
 function handleMainMenuGesture(gesture) {
   if (gesture === 'swipeRight') {
     state.focusedIndex = (state.focusedIndex + 1) % state.focusedItems.length;
-    renderMainMenu();
+    renderMainMenu(true);
   } else if (gesture === 'swipeLeft') {
     state.focusedIndex = (state.focusedIndex - 1 + state.focusedItems.length) % state.focusedItems.length;
-    renderMainMenu();
+    renderMainMenu(true);
   } else if (gesture === 'doubleTap') {
     const selected = state.focusedItems[state.focusedIndex];
     Haptic.trigger('success');
@@ -1852,6 +1974,7 @@ function renderMessageDetail() {
   inlineMorseBuffer = '';
   inlineMorseText = '';
   inlineVoiceTranscript = '';
+  state.msgSendConfirmationActive = false;
 
   const container = document.getElementById('msgDetailContainer');
   if (container) {
@@ -1873,7 +1996,7 @@ function renderMessageDetail() {
   }
 
   // Speak message content via TTS
-  Speech.speak(`Message from ${senderName}: ${textContent}. ${modeInstruction} Swipe right to send, or long press to go back.`);
+  Speech.speak(`Message from ${senderName}: ${textContent}. ${modeInstruction} Swipe up to send, swipe right for space, swipe left to delete, or long press to go back.`);
 
   // Activate input listeners based on active settings
   initInlineMorseListeners();
@@ -2172,10 +2295,45 @@ function handleMessagesGesture(gesture) {
     }
   }
   else if (state.currentSubScreen === 'msgDetailView') {
-    if (gesture === 'swipeRight' || gesture === 'doubleTap') {
-      const activeMsg = getActiveMessage();
-      const senderName = activeMsg ? activeMsg.senderName : 'Contact';
-      const textToSend = inlineMorseText || inlineVoiceTranscript || 'Ќе стигнам за 10 минути';
+    const activeMsg = getActiveMessage();
+    const senderName = activeMsg ? activeMsg.senderName : 'Contact';
+    const textToSend = inlineMorseText || inlineVoiceTranscript || 'Ќе стигнам за 10 минути';
+
+    if (gesture === 'swipeRight') {
+      if (state.msgSendConfirmationActive) {
+        Haptic.trigger('error');
+      } else {
+        Haptic.trigger('short');
+        inlineMorseText += ' ';
+        const footerEl = document.getElementById('msgDetailFooterHint');
+        if (footerEl) footerEl.innerText = `Morse: "${inlineMorseText}"`;
+        Speech.speak('Space');
+      }
+    } else if (gesture === 'swipeLeft') {
+      if (state.msgSendConfirmationActive) {
+        state.msgSendConfirmationActive = false;
+        Haptic.trigger('short');
+        Speech.speak("Send cancelled. Resumed message composing.");
+      } else {
+        Haptic.trigger('short');
+        if (inlineMorseText.length > 0) {
+          const deletedChar = inlineMorseText.charAt(inlineMorseText.length - 1);
+          inlineMorseText = inlineMorseText.slice(0, -1);
+          const footerEl = document.getElementById('msgDetailFooterHint');
+          if (footerEl) footerEl.innerText = inlineMorseText ? `Morse: "${inlineMorseText}"` : 'Morse typing active...';
+          Speech.speak('Deleted ' + (deletedChar === ' ' ? 'space' : deletedChar));
+        } else {
+          Speech.speak('Text is empty');
+        }
+      }
+    } else if (gesture === 'swipeUp') {
+      if (!state.msgSendConfirmationActive) {
+        state.msgSendConfirmationActive = true;
+        Haptic.trigger('success');
+        Speech.speak(`Ready to send to ${senderName}. Draft is: "${textToSend}". Double tap anywhere to send, or swipe left to cancel.`);
+      }
+    } else if (gesture === 'doubleTap') {
+      state.msgSendConfirmationActive = false;
       sendSMSMessageInline(textToSend, `Message sent successfully to ${senderName}`);
     } else if (gesture === 'longPress') {
       if (activeSpeechRecognition) {
@@ -2227,6 +2385,23 @@ function handleMessagesGesture(gesture) {
     if (gesture === 'doubleTap' || gesture === 'swipeUp') {
       const textToSend = morseOutputText || 'OK';
       sendSMSMessage(textToSend, 'Morse reply sent');
+    } else if (gesture === 'swipeRight') {
+      Haptic.trigger('short');
+      morseOutputText += ' ';
+      const display = document.getElementById('morseTextResult');
+      if (display) display.innerText = morseOutputText || 'Tap dot / hold dash...';
+      Speech.speak('Space');
+    } else if (gesture === 'swipeLeft') {
+      Haptic.trigger('short');
+      if (morseOutputText.length > 0) {
+        const deletedChar = morseOutputText.charAt(morseOutputText.length - 1);
+        morseOutputText = morseOutputText.slice(0, -1);
+        const display = document.getElementById('morseTextResult');
+        if (display) display.innerText = morseOutputText || 'Tap dot / hold dash...';
+        Speech.speak('Deleted ' + (deletedChar === ' ' ? 'space' : deletedChar));
+      } else {
+        Speech.speak('Text is empty');
+      }
     } else if (gesture === 'longPress') {
       Haptic.trigger('long');
       Speech.speak('Returned to Reply Options');
@@ -2319,7 +2494,7 @@ function initMorseInput() {
   pad.ontouchstart = (e) => { e.preventDefault(); onPadStart(e); };
   pad.ontouchend = (e) => { e.preventDefault(); onPadEnd(e); };
 
-  Speech.speak('Morse keyboard active. Tap for dot, hold for dash. Swipe up or double tap to send reply.');
+  Speech.speak('Morse keyboard active. Tap for dot, hold for dash. Swipe right for space, swipe left to delete. Swipe up or double tap to send.');
 }
 
 function decodeMorseLetter() {
@@ -4304,8 +4479,8 @@ function handleSettingsGesture(gesture) {
         localStorage.removeItem('blindEye_tutorialCompleted');
         saveDb();
 
-        Speech.speak('Restarting handwriting tutorial and gesture calibration.');
-        startTutorial();
+        Speech.speak('Restarting onboarding and setup tutorial.');
+        resetAppOnboarding();
       }
     } else if (gesture === 'longPress') {
       Speech.speak('Returned to Main Menu');
@@ -5043,5 +5218,914 @@ window.onload = () => {
   document.addEventListener('click', handleFirstInteraction);
   document.addEventListener('touchstart', handleFirstInteraction);
 
+  // Bind welcome screen onboarding buttons
+  const startBtn = document.getElementById('startTutorialBtn');
+  if (startBtn) {
+    startBtn.onclick = (e) => {
+      e.preventDefault();
+      Haptic.trigger('success');
+      startOnboardingFlow();
+    };
+  }
+
+  const skipBtn = document.getElementById('skipTutorialBtn');
+  if (skipBtn) {
+    skipBtn.onclick = (e) => {
+      e.preventDefault();
+      skipOnboardingEntirely();
+    };
+  }
+
+  // Bind onboarding biometric screen click for manual desktop testing
+  const authOverlay = document.getElementById('onboardingAuthScreen');
+  if (authOverlay) {
+    authOverlay.onclick = (e) => {
+      e.preventDefault();
+      handleBiometricAuthOnboarding();
+    };
+  }
+
+  // Always show the welcome screen on boot.
+  // Swipe Right → Main Menu (returning user shortcut)
+  // Swipe Left  → Full onboarding / tutorial
+  state.authenticated = false;
   navigateTo('welcomeScreen');
 };
+
+// ==========================================
+// 13. ONBOARDING & TUTORIAL CONTROLLER
+// ==========================================
+
+const ONBOARDING_STEPS = {
+  NAV_BAR: 0,
+  SWIPE_R: 1,
+  SWIPE_L: 2,
+  DBL_TAP: 3,
+  LONG_PRESS: 4,
+  TWO_FINGER_TAP: 5,
+  PERM_CAMERA: 6,
+  PERM_MIC: 7,
+  CONFIG_VIBE: 8,
+  CONFIG_PRIVACY: 9,
+  CONFIG_READING: 10,
+  TUT_TYPING: 11,
+  TUT_GLOBAL_GESTURES: 12,
+  CALIBRATION: 13
+};
+
+function startOnboardingFlow() {
+  state.onboardingActive = true;
+  state.onboardingStep = 0;
+  state.authenticated = true; // Bypass biometric auth gate in setup
+  navigateTo('gestureTrainingScreen');
+  Speech.speak("Welcome to the gesture tutorial. Let's find the Navigation Bar. It is a dedicated touch strip running horizontally along the bottom third of the screen. Tap anywhere in the very bottom section of your screen to locate it.");
+  updateGestureTrainingUI("Locate Navigation Bar", "The navigation bar is located at the bottom third of the screen. Tap the bottom section of your screen to locate it.", "Tap bottom of screen", 0);
+}
+
+function skipOnboardingEntirely() {
+  state.onboardingActive = false;
+  state.authenticated = true;
+  if (!state.db) state.db = {};
+  state.db.tutorialCompleted = true;
+  localStorage.setItem('blindEye_tutorialCompleted', 'true');
+  saveDb();
+  navigateTo('mainMenuScreen');
+  Speech.speak("Onboarding skipped. Opening Main Menu.");
+}
+
+function initOnboardingAuth() {
+  const overlay = document.getElementById('privacyOverlay');
+  if (overlay) overlay.classList.remove('active'); // ensure screen is visible during auth
+
+  const title = "DEVICE AUTHENTICATION";
+  const desc = "Device locked. Biometric scan required. Tap anywhere on the screen to authenticate.";
+
+  Speech.speak(desc);
+  logSystem("Awaiting biometric scan input...", "system");
+}
+
+function handleBiometricAuthOnboarding() {
+  if (state.authenticated) return; // Prevent double trigger
+
+  const scanner = document.querySelector('.biometric-scanner-ring');
+  const statusText = document.getElementById('onboardingAuthStatus');
+
+  if (scanner) {
+    scanner.style.borderColor = '#10B981';
+    scanner.style.boxShadow = '0 0 30px rgba(16, 185, 129, 0.6)';
+    const icon = scanner.querySelector('i');
+    if (icon) icon.style.color = '#10B981';
+  }
+
+  if (statusText) {
+    statusText.innerText = "AUTHENTICATION SUCCESSFUL";
+    statusText.style.color = "#10B981";
+    statusText.style.fontWeight = "bold";
+  }
+
+  Haptic.trigger('success');
+  Haptic.playSound('connected');
+  Speech.speak("Authentication successful.");
+  logSystem("Biometric authentication successful.", "system");
+
+  setTimeout(() => {
+    state.authenticated = true;
+
+    // Restore styling
+    if (scanner) {
+      scanner.style.borderColor = '#00E5FF';
+      scanner.style.boxShadow = '';
+      const icon = scanner.querySelector('i');
+      if (icon) icon.style.color = '#00E5FF';
+    }
+    if (statusText) {
+      statusText.innerText = "Place your finger anywhere on the screen to authenticate.";
+      statusText.style.color = "#CCCCCC";
+      statusText.style.fontWeight = "";
+    }
+
+    const isCompleted = state.db && (state.db.tutorialCompleted || localStorage.getItem('blindEye_tutorialCompleted') === 'true');
+    if (isCompleted) {
+      state.onboardingActive = false;
+      Speech.speak("Welcome back. Opening Main Menu.");
+      navigateTo('mainMenuScreen');
+    } else {
+      state.onboardingActive = true;
+      state.onboardingStep = 0;
+      navigateTo('gestureTrainingScreen');
+      Speech.speak("Welcome to the gesture tutorial. Let's find the Navigation Bar. It is a dedicated touch strip running horizontally along the bottom third of the screen. Tap anywhere in the very bottom section of your screen to locate it.");
+      updateGestureTrainingUI("Locate Navigation Bar", "The navigation bar is located at the bottom third of the screen. Tap the bottom section of your screen to locate it.", "Tap bottom of screen", 0);
+    }
+  }, 1200);
+}
+
+function advanceOnboarding() {
+  if (state.onboardingStep >= ONBOARDING_STEPS.TUT_GLOBAL_GESTURES) {
+    state.onboardingActive = false; // Calibration uses its own gesture handler
+    navigateTo('tutorialScreen');
+    return;
+  }
+
+  state.onboardingStep++;
+
+  if (state.onboardingStep <= ONBOARDING_STEPS.TWO_FINGER_TAP) {
+    navigateTo('gestureTrainingScreen');
+
+    if (state.onboardingStep === ONBOARDING_STEPS.SWIPE_R) {
+      state.tutorialMenuIndex = 0;
+      Speech.speak("Let's learn navigation. Swipe right inside the navigation bar to focus the next item.");
+      updateGestureTrainingUI("Swipe Right", "Swipe right inside the navigation bar to focus the next item.", "Swipe Right now", 1);
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.SWIPE_L) {
+      state.tutorialMenuIndex = 2;
+      Speech.speak("Settings focused. Perfect! Let's learn to go backward. Swipe left inside the navigation bar to focus Phone.");
+      updateGestureTrainingUI("Swipe Left", "Swipe left inside the navigation bar to go to the previous item.", "Swipe Left now", 2);
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.DBL_TAP) {
+      state.tutorialMenuIndex = 0;
+      Speech.speak("Messages focused. Wonderful! You've mastered browsing menus. Next, let's learn how to select an option. Double tap inside the navigation bar to select Messages.");
+      updateGestureTrainingUI("Double Tap", "Double tap inside the navigation bar to confirm a selection.", "Double Tap now", 3);
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.LONG_PRESS) {
+      Speech.speak("Messages selected! This opens the action menu. In a real screen, this lets you reply or read details. Now, let's learn how to go back. Press and hold your finger on the navigation bar for one second.");
+      updateGestureTrainingUI("Long Press", "Press and hold the navigation bar for one second to go back.", "Long Press now", 4);
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.TWO_FINGER_TAP) {
+      Speech.speak("Correct! Long press goes back. Finally, tap the navigation bar with two fingers simultaneously to hear your battery and time status.");
+      updateGestureTrainingUI("Two-Finger Tap", "Tap the navigation bar with two fingers to hear battery and time status.", "Two-Finger Tap now", 5);
+    }
+  }
+  else {
+    navigateTo('onboardingConfigScreen');
+
+    if (state.onboardingStep === ONBOARDING_STEPS.PERM_CAMERA) {
+      Speech.speak("Let's set up system permissions. The camera is used to read labels and recognize objects. Double tap to grant camera permission, or swipe right to skip.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.PERM_MIC) {
+      Speech.speak("The microphone is used to dictate text replies. Double tap to grant microphone permission, or swipe right to skip.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_VIBE) {
+      Speech.speak("Choose haptic feedback intensity. Swipe right or left to cycle low, medium, or high intensity. Double tap to confirm.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_PRIVACY) {
+      Speech.speak("Privacy mode blackouts your screen in public so others cannot read your text messages. Double tap to toggle, and swipe right to confirm.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_READING) {
+      Speech.speak("Select your reading mode. Swipe right or left to cycle speech, morse, or combined. Double tap to confirm.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.TUT_TYPING) {
+      Speech.speak("Let's practice message typing. Tap anywhere on the screen for a dot, and hold your finger down for a dash. Swipe right inside the bottom navigation bar to insert a space, swipe left inside the navigation bar to delete the last character, and swipe up inside the navigation bar when you are finished to draft your message.");
+    }
+    else if (state.onboardingStep === ONBOARDING_STEPS.TUT_GLOBAL_GESTURES) {
+      Speech.speak("Let's learn other category shortcuts. Swipe down with two fingers inside the navigation bar to open the Quick Access menu.");
+    }
+    renderOnboardingStep();
+  }
+}
+
+function updateGestureTrainingUI(title, text, indicator, stepIndex) {
+  const tutTitle = document.getElementById('tutTitle');
+  const tutText = document.getElementById('tutText');
+  const tutIndicator = document.getElementById('tutIndicatorText');
+  const counter = document.getElementById('tutStepCounter');
+
+  if (tutTitle) tutTitle.innerText = title;
+  if (tutText) tutText.innerText = text;
+  if (tutIndicator) tutIndicator.innerText = `Try it now: ${indicator}`;
+  if (counter) counter.innerText = `[ ${stepIndex + 1} / 6 ]`;
+
+  const animBox = document.getElementById('tutAnimationBox');
+  if (animBox) {
+    if (stepIndex === 1 || stepIndex === 2 || stepIndex === 3) {
+      const currentCategory = state.tutorialMockItems[state.tutorialMenuIndex];
+      let icon = 'fa-comment-sms';
+      if (currentCategory === 'PHONE') icon = 'fa-phone';
+      if (currentCategory === 'SETTINGS') icon = 'fa-sliders';
+
+      animBox.style.width = '160px';
+      animBox.style.height = '110px';
+      animBox.style.borderRadius = '16px';
+      animBox.style.flexDirection = 'column';
+      animBox.style.gap = '8px';
+      animBox.innerHTML = `
+        <i class="fa-solid ${icon}" style="font-size: 2.2rem; color: #00E5FF;"></i>
+        <span style="color: #FFFFFF; font-size: 0.95rem; font-weight: bold; letter-spacing: 0.5px;">${currentCategory}</span>
+      `;
+    } else {
+      animBox.style.width = '90px';
+      animBox.style.height = '90px';
+      animBox.style.borderRadius = '50%';
+      animBox.style.flexDirection = 'row';
+      animBox.innerHTML = `<i class="fa-solid fa-hand-pointer tut-hand-icon" style="font-size: 2.5rem; color: #00E5FF;"></i>`;
+    }
+  }
+
+  const header = document.getElementById('gestureTrainingHeader');
+  if (header) {
+    const dots = header.querySelectorAll('.tut-step-dot');
+    dots.forEach((dot, idx) => {
+      if (idx === stepIndex) {
+        dot.className = 'tut-step-dot active';
+        dot.style.width = '24px';
+        dot.style.height = '8px';
+        dot.style.borderRadius = '4px';
+        dot.style.backgroundColor = '#00E5FF';
+        dot.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.5)';
+      } else {
+        dot.className = 'tut-step-dot';
+        dot.style.width = '8px';
+        dot.style.height = '8px';
+        dot.style.borderRadius = '50%';
+        dot.style.backgroundColor = idx < stepIndex ? '#10B981' : '#444444';
+        dot.style.boxShadow = '';
+      }
+    });
+  }
+}
+
+function renderOnboardingStep() {
+  const container = document.getElementById('onboardingConfigContainer');
+  if (!container) return;
+
+  let html = '';
+  let dotCount = 7;
+  let activeDot = 0;
+
+  if (state.onboardingStep === ONBOARDING_STEPS.PERM_CAMERA) {
+    activeDot = 0;
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ SYSTEM ACCESS ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 1 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-camera" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase;">CAMERA ACCESS</h2>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Allow • Swipe Right: Skip ]</span>
+        </div>
+      </div>
+    `;
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.PERM_MIC) {
+    activeDot = 1;
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ SYSTEM ACCESS ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 2 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-microphone" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase;">MICROPHONE</h2>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Allow • Swipe Right: Skip ]</span>
+        </div>
+      </div>
+    `;
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_VIBE) {
+    activeDot = 2;
+    const current = (state.db && state.db.settings && state.db.settings.vibeIntensity || 'medium').toUpperCase();
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ HAPTIC SETUP ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 3 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-wave-square" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase;">VIBE INTENSITY</h2>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; border: 2px dashed #444; padding: 6px 20px; border-radius: 12px; margin-top: 8px;">${current}</div>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Swipe: Change • Double Tap: Confirm ]</span>
+        </div>
+      </div>
+    `;
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_PRIVACY) {
+    activeDot = 3;
+    const isAuto = state.db && state.db.settings && state.db.settings.privacyMode === 'auto';
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ PRIVACY SETUP ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 4 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-eye-slash" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase;">PRIVACY SHIELD</h2>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; border: 2px dashed #444; padding: 6px 20px; border-radius: 12px; margin-top: 8px;">${isAuto ? 'ENABLED' : 'DISABLED'}</div>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Double Tap: Toggle • Swipe Right: Confirm ]</span>
+        </div>
+      </div>
+    `;
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_READING) {
+    activeDot = 4;
+    const mode = (state.db && state.db.settings && state.db.settings.readingMode || 'combined').toUpperCase();
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ READING MODE ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 5 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-book-open" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.6rem; margin: 0; font-weight: 800; text-transform: uppercase;">READING FEEDBACK</h2>
+          <div style="font-size: 1.8rem; font-weight: 800; color: #00E5FF; border: 2px dashed #444; padding: 6px 20px; border-radius: 12px; margin-top: 8px;">${mode}</div>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Swipe: Change • Double Tap: Confirm ]</span>
+        </div>
+      </div>
+    `;
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.TUT_TYPING) {
+    activeDot = 5;
+    if (state.onboardingMorseText === undefined) state.onboardingMorseText = '';
+    if (state.onboardingMorseBuffer === undefined) state.onboardingMorseBuffer = '';
+
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px 16px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ TYPING TUTORIAL ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 6 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; text-align: center; margin: auto 0;">
+          <div style="color: #00E5FF; font-size: 0.9rem; min-height: 1.2rem; font-weight: bold;" id="onboardingMorseSymbols">${state.onboardingMorseBuffer || '&nbsp;'}</div>
+          <div style="color: #FFFFFF; font-size: 1.4rem; font-weight: bold; min-height: 2rem; word-break: break-all;" id="onboardingMorseText">${state.onboardingMorseText || 'Type message...'}</div>
+          <div id="onboardingMorsePad" style="width: 100%; height: 110px; border: 2px dashed #00E5FF; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.03); color: #00E5FF; font-weight: bold; font-size: 0.9rem; cursor: pointer; user-select: none; margin-top: 6px;">
+            TAP / HOLD ANYWHERE ON SCREEN
+          </div>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.75rem; font-weight: bold;">[ Swipe R: Space • Swipe L: Delete • Swipe U: Send ]</span>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      initOnboardingMorsePad();
+    }, 50);
+  }
+  else if (state.onboardingStep === ONBOARDING_STEPS.TUT_GLOBAL_GESTURES) {
+    activeDot = 6;
+    html = `
+      <div class="hero-card" style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; overflow: hidden; margin: auto;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem;">[ SHORTCUTS LESSON ]</span>
+          <span style="color: #FFFFFF; font-weight: bold; font-size: 1rem;">[ 7 / 7 ]</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; margin: auto 0;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.05); margin-bottom: 8px;">
+            <i class="fa-solid fa-bolt" style="font-size: 2.2rem; color: #00E5FF;"></i>
+          </div>
+          <h2 style="color: #00E5FF; font-size: 1.4rem; margin: 0; font-weight: 800; text-transform: uppercase;">SPECIAL SHORTCUTS</h2>
+          <div id="onboardingGlobalGesturesStatus" style="font-size: 1.1rem; font-weight: bold; color: #00E5FF; border: 2px dashed #444; padding: 6px 20px; border-radius: 12px; margin-top: 8px;">SWIPE DOWN (2 FINGERS)</div>
+        </div>
+        <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center; flex-shrink: 0;">
+          <span style="color: #00E5FF; font-size: 0.8rem; font-weight: bold;">[ Swipe down with two fingers inside navigation bar ]</span>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0;">
+      ${Array(dotCount).fill(0).map((_, idx) => `
+        <span style="width: ${idx === activeDot ? '24px' : '8px'}; height: 8px; background: ${idx === activeDot ? '#00E5FF' : '#666666'}; border-radius: ${idx === activeDot ? '4px' : '50%'}; transition: all 0.2s;"></span>
+      `).join('')}
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+let onboardingMorseTimer = null;
+function initOnboardingMorsePad() {
+  const container = document.getElementById('onboardingConfigScreen');
+  if (!container) return;
+
+  let touchStartTime = 0;
+
+  const isTouchInNavBar = (y) => {
+    if (y === undefined) return false;
+    const phoneEl = document.getElementById('phoneScreen');
+    if (!phoneEl) return false;
+    const rect = phoneEl.getBoundingClientRect();
+    const relY = y - rect.top;
+    const topEdge = rect.height - 160;
+    const bottomEdge = rect.height - 90;
+    return relY >= topEdge && relY <= bottomEdge;
+  };
+
+  const onPadStart = (e, clientY) => {
+    if (isTouchInNavBar(clientY)) return; // Let gesture manager handle this
+    e.stopPropagation();
+    touchStartTime = Date.now();
+  };
+
+  const onPadEnd = (e, clientY) => {
+    if (isTouchInNavBar(clientY)) return; // Let gesture manager handle this
+    e.stopPropagation();
+    const duration = Date.now() - touchStartTime;
+    const symbol = duration < MORSE_INPUT.DOT_THRESHOLD ? '.' : '-';
+
+    if (state.onboardingMorseBuffer === undefined) state.onboardingMorseBuffer = '';
+    state.onboardingMorseBuffer += symbol;
+
+    const symbolsEl = document.getElementById('onboardingMorseSymbols');
+    if (symbolsEl) symbolsEl.innerText = state.onboardingMorseBuffer;
+    Haptic.trigger(symbol === '.' ? 'short' : 'long');
+
+    if (onboardingMorseTimer) clearTimeout(onboardingMorseTimer);
+    onboardingMorseTimer = setTimeout(decodeOnboardingMorseLetter, 800);
+  };
+
+  container.onmousedown = (e) => onPadStart(e, e.clientY);
+  container.onmouseup = (e) => onPadEnd(e, e.clientY);
+  container.ontouchstart = (e) => {
+    const touch = e.touches[0];
+    onPadStart(e, touch ? touch.clientY : undefined);
+  };
+  container.ontouchend = (e) => {
+    const touch = e.changedTouches[0];
+    onPadEnd(e, touch ? touch.clientY : undefined);
+  };
+}
+
+function decodeOnboardingMorseLetter() {
+  const char = DECODE_MORSE_MAP[state.onboardingMorseBuffer];
+  const textEl = document.getElementById('onboardingMorseText');
+
+  if (char && textEl) {
+    if (state.onboardingMorseText === undefined || state.onboardingMorseText === 'Type message...') {
+      state.onboardingMorseText = '';
+    }
+    state.onboardingMorseText += char;
+    textEl.innerText = state.onboardingMorseText;
+    Speech.speak(char);
+  } else if (state.onboardingMorseBuffer && state.onboardingMorseBuffer.length > 0) {
+    Haptic.trigger('error');
+    Speech.speak('Unknown symbol');
+  }
+  state.onboardingMorseBuffer = '';
+  const symbolsEl = document.getElementById('onboardingMorseSymbols');
+  if (symbolsEl) symbolsEl.innerText = '';
+}
+
+function grantCameraPermissionOnboarding() {
+  Haptic.trigger('short');
+  Speech.speak("Requesting camera permission...");
+
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        Haptic.trigger('success');
+        Speech.speak("Camera permission granted successfully.", true, advanceOnboarding);
+        stream.getTracks().forEach(track => track.stop());
+      })
+      .catch(err => {
+        Haptic.trigger('error');
+        Speech.speak("Camera access denied. Let's proceed.", true, advanceOnboarding);
+      });
+  } else {
+    Haptic.trigger('success');
+    Speech.speak("Camera permission simulated.", true, advanceOnboarding);
+  }
+}
+
+function grantMicPermissionOnboarding() {
+  Haptic.trigger('short');
+  Speech.speak("Requesting microphone permission...");
+
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        Haptic.trigger('success');
+        Speech.speak("Microphone permission granted successfully.", true, advanceOnboarding);
+        stream.getTracks().forEach(track => track.stop());
+      })
+      .catch(err => {
+        Haptic.trigger('error');
+        Speech.speak("Microphone access denied. Let's proceed.", true, advanceOnboarding);
+      });
+  } else {
+    Haptic.trigger('success');
+    Speech.speak("Microphone permission simulated.", true, advanceOnboarding);
+  }
+}
+
+function handleOnboardingGesture(gesture, x, y) {
+  logSystem(`Onboarding Gesture Intercept: ${gesture} at step ${state.onboardingStep}`, 'input');
+
+  const isGestureInNavBar = () => {
+    if (x === undefined || y === undefined) return true; // Bypass coordinates check for simulator buttons
+    const phoneEl = document.getElementById('phoneScreen');
+    if (!phoneEl) return false;
+    const rect = phoneEl.getBoundingClientRect();
+    const relY = y - rect.top;
+    const topEdge = rect.height - 160;
+    const bottomEdge = rect.height - 90;
+    return relY >= topEdge && relY <= bottomEdge;
+  };
+
+  if (state.onboardingStep === ONBOARDING_STEPS.NAV_BAR) {
+    Haptic.trigger('error');
+    Speech.speak("Tap the bottom third of the screen to locate the navigation bar.");
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.SWIPE_R) {
+    if (gesture === 'swipeRight') {
+      if (isGestureInNavBar()) {
+        if (state.tutorialMenuIndex === 0) {
+          state.tutorialMenuIndex = 1;
+          Haptic.trigger('success');
+          updateGestureTrainingUI("Swipe Right", "Swipe right inside the navigation bar to focus the next item.", "Swipe Right now", 1);
+          Speech.speak("Phone focused. Excellent! Swipe right again to focus Settings.");
+        } else if (state.tutorialMenuIndex === 1) {
+          state.tutorialMenuIndex = 2;
+          Haptic.trigger('success');
+          updateGestureTrainingUI("Swipe Right", "Swipe right inside the navigation bar to focus the next item.", "Swipe Right now", 1);
+          advanceOnboarding();
+        } else {
+          Haptic.trigger('error');
+        }
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Gesture occurred outside the navigation bar. Swipe right inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+      Speech.speak("Incorrect gesture. Swipe right inside the navigation bar.");
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.SWIPE_L) {
+    if (gesture === 'swipeLeft') {
+      if (isGestureInNavBar()) {
+        if (state.tutorialMenuIndex === 2) {
+          state.tutorialMenuIndex = 1;
+          Haptic.trigger('success');
+          updateGestureTrainingUI("Swipe Left", "Swipe left inside the navigation bar to go to the previous item.", "Swipe Left now", 2);
+          Speech.speak("Phone focused. Great! Swipe left once more to return to Messages.");
+        } else if (state.tutorialMenuIndex === 1) {
+          state.tutorialMenuIndex = 0;
+          Haptic.trigger('success');
+          updateGestureTrainingUI("Swipe Left", "Swipe left inside the navigation bar to go to the previous item.", "Swipe Left now", 2);
+          advanceOnboarding();
+        } else {
+          Haptic.trigger('error');
+        }
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Gesture occurred outside the navigation bar. Swipe left inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+      Speech.speak("Incorrect gesture. Swipe left inside the navigation bar.");
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.DBL_TAP) {
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        if (state.tutorialMenuIndex === 0) {
+          Haptic.trigger('success');
+          advanceOnboarding();
+        } else {
+          Haptic.trigger('error');
+          Speech.speak("Messages must be focused. Double tap now inside the navigation bar.");
+        }
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Double tap inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+      Speech.speak("Incorrect gesture. Double tap inside the navigation bar.");
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.LONG_PRESS) {
+    if (gesture === 'longPress') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        advanceOnboarding();
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Press and hold occurred outside the navigation bar. Press and hold inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+      Speech.speak("Incorrect gesture. Press and hold inside the navigation bar.");
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.TWO_FINGER_TAP) {
+    if (gesture === 'twoFingerTap') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const announceStatus = (batteryStr) => {
+          Speech.speak(`Correct! Two-finger tap checks status. Time is ${timeStr}. Battery is ${batteryStr}. Connection is stable. Now, let's set up permissions.`, true, advanceOnboarding);
+        };
+        
+        let announceBatteryStr = '85 percent';
+        if ('getBattery' in navigator) {
+          navigator.getBattery().then(battery => {
+            const level = Math.round(battery.level * 100);
+            announceBatteryStr = `${level} percent`;
+            announceStatus(announceBatteryStr);
+          }).catch(() => {
+            announceStatus(announceBatteryStr);
+          });
+        } else {
+          announceStatus(announceBatteryStr);
+        }
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Two-finger tap occurred outside the navigation bar. Tap with two fingers inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+      Speech.speak("Incorrect gesture. Tap with two fingers inside the navigation bar.");
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.PERM_CAMERA) {
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        grantCameraPermissionOnboarding();
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else if (gesture === 'swipeRight') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        Speech.speak("Camera permission skipped.", true, advanceOnboarding);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Swipe occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.PERM_MIC) {
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        grantMicPermissionOnboarding();
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else if (gesture === 'swipeRight') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        Speech.speak("Microphone permission skipped.", true, advanceOnboarding);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Swipe occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_VIBE) {
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        const curIntensity = (state.db && state.db.settings && state.db.settings.vibeIntensity || 'medium');
+        Speech.speak(`Vibration intensity saved as ${curIntensity}.`, true, advanceOnboarding);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else if (gesture === 'swipeRight' || gesture === 'swipeLeft') {
+      if (isGestureInNavBar()) {
+        if (!state.db) state.db = { settings: {} };
+        if (!state.db.settings) state.db.settings = {};
+        const options = ['low', 'medium', 'high'];
+        let idx = options.indexOf(state.db.settings.vibeIntensity || 'medium');
+        if (gesture === 'swipeRight') idx = (idx + 1) % 3;
+        else idx = (idx - 1 + 3) % 3;
+        state.db.settings.vibeIntensity = options[idx];
+        saveDb();
+        Haptic.trigger(options[idx] === 'low' ? 'short' : options[idx] === 'medium' ? 'success' : 'long');
+        renderOnboardingStep();
+        Speech.speak(`${options[idx].charAt(0).toUpperCase() + options[idx].slice(1)} haptics.`);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Gesture occurred outside the navigation bar. Swipe right or left inside the yellow outlined zone.");
+      }
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_PRIVACY) {
+    if (!state.db) state.db = { settings: {} };
+    if (!state.db.settings) state.db.settings = {};
+    const isAuto = state.db.settings.privacyMode === 'auto';
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        state.db.settings.privacyMode = isAuto ? 'off' : 'auto';
+        saveDb();
+        Haptic.trigger('success');
+        updatePrivacyScreenState();
+        renderOnboardingStep();
+        Speech.speak(`Privacy mode ${state.db.settings.privacyMode === 'auto' ? 'enabled. Screen blackout active.' : 'disabled.'}`);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else if (gesture === 'swipeRight') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        Speech.speak(`Privacy mode saved.`, true, advanceOnboarding);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Swipe occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else {
+      Haptic.trigger('error');
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.CONFIG_READING) {
+    if (!state.db) state.db = { settings: {} };
+    if (!state.db.settings) state.db.settings = {};
+    if (gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        Speech.speak(`Reading mode saved as ${state.db.settings.readingMode || 'combined'}.`, true, advanceOnboarding);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Double tap occurred outside the navigation bar. Try again inside the yellow outlined zone.");
+      }
+    } else if (gesture === 'swipeRight' || gesture === 'swipeLeft') {
+      if (isGestureInNavBar()) {
+        const options = ['combined', 'voice', 'morse'];
+        let idx = options.indexOf(state.db.settings.readingMode || 'combined');
+        if (gesture === 'swipeRight') idx = (idx + 1) % 3;
+        else idx = (idx - 1 + 3) % 3;
+        state.db.settings.readingMode = options[idx];
+        saveDb();
+        Haptic.trigger('short');
+        renderOnboardingStep();
+        Speech.speak(`${options[idx] === 'voice' ? 'TTS Only' : options[idx].charAt(0).toUpperCase() + options[idx].slice(1)} reading mode.`);
+      } else {
+        Haptic.trigger('error');
+        Speech.speak("Gesture occurred outside the navigation bar. Swipe right or left inside the yellow outlined zone.");
+      }
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.TUT_TYPING) {
+    if (gesture === 'swipeRight') {
+      if (isGestureInNavBar()) {
+        if (state.onboardingTypingComplete) {
+          Haptic.trigger('success');
+          state.onboardingTypingComplete = false;
+          advanceOnboarding();
+        } else {
+          Haptic.trigger('short');
+          if (state.onboardingMorseText === undefined) state.onboardingMorseText = '';
+          state.onboardingMorseText += ' ';
+          const textEl = document.getElementById('onboardingMorseText');
+          if (textEl) textEl.innerText = state.onboardingMorseText || 'Type message...';
+          Speech.speak('Space');
+        }
+      } else {
+        Haptic.trigger('error');
+      }
+    } else if (gesture === 'swipeLeft') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('short');
+        if (state.onboardingMorseText && state.onboardingMorseText.length > 0) {
+          const deletedChar = state.onboardingMorseText.charAt(state.onboardingMorseText.length - 1);
+          state.onboardingMorseText = state.onboardingMorseText.slice(0, -1);
+          const textEl = document.getElementById('onboardingMorseText');
+          if (textEl) textEl.innerText = state.onboardingMorseText || 'Type message...';
+          Speech.speak('Deleted ' + (deletedChar === ' ' ? 'space' : deletedChar));
+        } else {
+          Speech.speak('Text is empty');
+        }
+      } else {
+        Haptic.trigger('error');
+      }
+    } else if (gesture === 'swipeUp' || gesture === 'doubleTap') {
+      if (isGestureInNavBar()) {
+        Haptic.trigger('success');
+        const typed = state.onboardingMorseText || 'OK';
+        Speech.speak(`Draft prepared: "${typed}". Typing lesson complete! Swipe right inside the navigation bar to continue to shortcuts.`);
+        state.onboardingTypingComplete = true;
+        const textEl = document.getElementById('onboardingMorseText');
+        if (textEl) textEl.innerText = `Draft: "${typed}"`;
+      } else {
+        Haptic.trigger('error');
+      }
+    } else {
+      Haptic.trigger('error');
+    }
+    return;
+  }
+
+  if (state.onboardingStep === ONBOARDING_STEPS.TUT_GLOBAL_GESTURES) {
+    if (gesture === 'swipeDown') {
+      Haptic.trigger('success');
+      Speech.speak("Correct! Swipe down opens the Quick Access actions. Now, press and hold your finger on the navigation bar for one second to exit and complete the gesture tutorial.");
+      const statusEl = document.getElementById('onboardingGlobalGesturesStatus');
+      if (statusEl) {
+        statusEl.innerText = "LONG PRESS TO COMPLETE";
+      }
+      state.onboardingGlobalGesturesComplete = true;
+    } else if (gesture === 'longPress') {
+      if (isGestureInNavBar()) {
+        if (state.onboardingGlobalGesturesComplete) {
+          Haptic.trigger('success');
+          state.onboardingGlobalGesturesComplete = false;
+          advanceOnboarding();
+        } else {
+          Haptic.trigger('error');
+          Speech.speak("Incorrect gesture. Swipe down with two fingers first to open the Quick Access actions.");
+        }
+      } else {
+        Haptic.trigger('error');
+      }
+    } else {
+      Haptic.trigger('error');
+    }
+    return;
+  }
+}
