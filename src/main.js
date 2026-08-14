@@ -6,6 +6,9 @@ import { navigateTo } from './core/router.js';
 import { renderLandingScreen } from './components/landing.js';
 import { renderSplashScreen } from './components/splash.js';
 import { initAuthComponent } from './components/auth.js';
+import { renderProgrammerScreen } from './components/programmer.js';
+import { renderSimulatorScreen } from './components/simulator.js';
+import { renderPreviewScreen } from './components/preview.js';
 import { handleWelcomeGesture } from './modules/welcome.js';
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -17,6 +20,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // Render components
   renderLandingScreen();
   renderSplashScreen();
+  renderProgrammerScreen();
+  renderSimulatorScreen();
+  renderPreviewScreen();
 
   // Handle welcome gestures globally
   window.addEventListener('keydown', (e) => {

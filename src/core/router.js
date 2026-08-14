@@ -20,7 +20,7 @@ export function navigateTo(screenId, subScreenId = null) {
 
   const navArea = document.getElementById('navigationArea') || document.getElementById('fixedNavigationArea');
   if (navArea) {
-    if (screenId === 'welcomeScreen' || screenId === 'tutorialScreen' || screenId === 'sosScreen' || screenId === 'activeCallScreen' || screenId === 'onboardingAuthScreen' || screenId === 'landingScreen') {
+    if (screenId === 'welcomeScreen' || screenId === 'tutorialScreen' || screenId === 'sosScreen' || screenId === 'activeCallScreen' || screenId === 'onboardingAuthScreen' || screenId === 'landingScreen' || screenId === 'programmerScreen' || screenId === 'simulatorScreen' || screenId === 'previewScreen') {
       navArea.style.display = 'none';
     } else {
       navArea.style.display = 'flex';
@@ -40,11 +40,14 @@ export function onScreenLoaded(screen, subScreen) {
   else if (screen === 'onboardingAuthScreen') {
     Speech.speak("Device locked. Biometric authentication required. Tap anywhere on the screen to scan fingerprint.");
   }
-  else if (screen === 'gestureTrainingScreen') {
-    // Handled by onboarding step logic
+  else if (screen === 'programmerScreen') {
+    Speech.speak("AI Programmer Engine Active. Configure contextual gesture rules and state machine nodes.");
   }
-  else if (screen === 'onboardingConfigScreen') {
-    // Handled by renderOnboardingStep
+  else if (screen === 'simulatorScreen') {
+    Speech.speak("Standalone Hardware Simulator Active. Listening for live real-time rule updates.");
+  }
+  else if (screen === 'previewScreen') {
+    Speech.speak("Split Preview Mode Active. Side-by-side AI Programmer and Simulator parity test.");
   }
   else if (screen === 'mainMenuScreen') {
     Speech.speak("Main Menu. Messages focused. Swipe right or left inside the navigation bar to browse categories.");

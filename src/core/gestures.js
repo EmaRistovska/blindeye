@@ -104,6 +104,25 @@ export const GestureManager = {
       return;
     }
 
+    if (state.currentScreen === 'simulatorScreen' || state.currentScreen === 'previewScreen') {
+      const gestureCodeMap = {
+        'swipeRight': 'SWIPE_RIGHT',
+        'swipeLeft': 'SWIPE_LEFT',
+        'swipeUp': 'SWIPE_UP',
+        'swipeDown': 'SWIPE_DOWN',
+        'doubleTap': 'DOUBLE_TAP',
+        'longPress': 'LONG_PRESS',
+        'twoFingerTap': 'TWO_FINGER_TAP',
+        'tap': 'DOUBLE_TAP' // Default tap falls back to double tap or focus
+      };
+      const gestureCode = gestureCodeMap[gesture] || 'DOUBLE_TAP';
+      const activeScreen = document.getElementById('simCurrentScreenSelect')?.value || 'welcomeScreen';
+      if (window.executeSimulatedGesture) {
+        window.executeSimulatedGesture(gestureCode, activeScreen);
+      }
+      return;
+    }
+
     if (gesture === 'twoFingerTap') {
       Haptic.trigger('success');
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
