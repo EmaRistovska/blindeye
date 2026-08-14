@@ -70,8 +70,14 @@
             </div>
 
 
+            <!-- Splash Screen -->
+            <div class="screen-view" id="splashScreen"></div>
+
+            <!-- Public Landing Screen -->
+            <div class="screen-view" id="landingScreen"></div>
+
             <!-- Welcome/Initial screen -->
-            <div class="screen-view active" id="welcomeScreen">
+            <div class="screen-view" id="welcomeScreen">
               <div class="welcome-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
                 <div style="margin-top: 40px;"></div>
                 <i class="fa-solid fa-hands-holding-child welcome-logo"></i>
@@ -814,7 +820,7 @@
     preload="auto"></audio>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 
 </html>
