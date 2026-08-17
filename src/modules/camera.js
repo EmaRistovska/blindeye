@@ -3,96 +3,195 @@ import { Speech } from '../core/speech.js';
 import { Haptic } from '../core/haptics.js';
 import { navigateTo } from '../core/router.js';
 
+const CAMERA_CATEGORIES = [
+  { id: 'ocr', title: 'READ TEXT & OCR', subtitle: 'Hold camera for 3s to read printed text', icon: 'fa-file-lines', color: '#10B981' },
+  { id: 'objects', title: 'SCAN OBJECTS', subtitle: 'Hold camera for 3s to describe scene & obstacles', icon: 'fa-cubes', color: '#00E5FF' }
+];
+
+let currentCatIdx = 0;
+let cameraMode = 'categoryMenu'; // 'categoryMenu', 'activeHold', 'result'
+let holdTimer = null;
+let holdSecondsLeft = 3;
+let isHoldingSteady = false;
 let isFlashOn = false;
-let ocrResultText = '';
-let activeMode = 'ocr'; // 'ocr' or 'scene'
 let cameraStream = null;
+let currentResultText = '';
 
-const sampleOcrScenes = {
-  medicine: "Paracetamol 500mg. Take 1 tablet every 8 hours with water. Expiry: 12/2028.",
-  book: "Chapter 1: The Journey of Senses. The quiet vibration guided every gentle step through the dark path.",
-  price: "Whole Organic Milk, 1 Liter. Price: $2.49. Fresh dairy section.",
-  menu: "Italian Bistro: Spaghetti Bolognese - $14. Margherita Pizza - $12. Mineral Water - $3."
-};
+const sampleOcrTexts = [
+  "Paracetamol 500mg. Take 1 tablet every 8 hours with water. Expiry date: 12/2028.",
+  "Bus Schedule: Line 2 to Centar arriving in 4 minutes. Line 15 arriving in 11 minutes.",
+  "Restaurant Menu: Chicken Soup $4.50. Greek Salad $6.00. Fresh Orange Juice $3.00.",
+  "Door Sign: Room 204 - Clinic Examination Room. Please knock before entering."
+];
 
-const sampleSceneDescriptions = {
-  chair: "Living room environment. Office ergonomic chair detected 1.5 meters directly in front of you.",
-  cup: "Kitchen table scene. A ceramic coffee mug and a pair of reading glasses detected on the right.",
-  door: "Indoor corridor. Open doorway detected 3 meters ahead with clear unobstructed walking path."
-};
+const sampleObjectScenes = [
+  "Living room environment. Low coffee table 1 meter ahead on the right. Wooden door open 3 meters ahead.",
+  "Outdoor sidewalk. Clear pathway for 5 meters. Pedestrian tactile paving detected on left.",
+  "Desk setting. Ceramic coffee mug and laptop detected directly in front of you."
+];
 
 export function renderCamera() {
   const container = document.getElementById('cameraScreen');
   if (!container) return;
 
-  container.innerHTML = `
-    <div style="width: 100%; height: 100%; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; background: #000000; color: #FFFFFF; font-family: 'Outfit', system-ui, sans-serif;">
-      
-      <!-- Top Bar -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <i class="fa-solid fa-camera" style="color: #10B981; font-size: 1.1rem;"></i>
-          <span style="color: #10B981; font-size: 0.9rem; font-weight: 800; text-transform: uppercase;">AI CAMERA VISION</span>
-        </div>
-        <button id="btnToggleFlash" style="padding: 4px 10px; background: ${isFlashOn ? '#FFEE55' : '#1E293B'}; color: ${isFlashOn ? '#000' : '#FFF'}; border: 1px solid #FFEE55; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
-          <i class="fa-solid fa-bolt"></i> ${isFlashOn ? 'Flash ON' : 'Flash OFF'}
-        </button>
-      </div>
+  // ----------------------------------------------------
+  // VIEW 1: CAMERA 2-CATEGORY MENU
+  // ----------------------------------------------------
+  if (cameraMode === 'categoryMenu') {
+    stopHoldTimer();
+    const cat = CAMERA_CATEGORIES[currentCatIdx];
 
-      <!-- Live Video Viewfinder Frame -->
-      <div style="border: 2px solid ${isFlashOn ? '#FFEE55' : '#10B981'}; border-radius: 16px; overflow: hidden; position: relative; height: 190px; background: #07090E; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);">
-        <video id="liveWebcamFeed" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+    container.innerHTML = `
+      <div style="width: 100%; height: 100%; box-sizing: border-box; padding: 18px 14px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; background: #000000; color: #FFFFFF; font-family: 'Outfit', system-ui, sans-serif;">
         
-        <!-- Viewfinder Overlay & Framing Grid -->
-        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; pointer-events: none;">
-          <div style="display: flex; justify-content: space-between;">
-            <div style="width: 16px; height: 16px; border-top: 3px solid #10B981; border-left: 3px solid #10B981;"></div>
-            <div style="width: 16px; height: 16px; border-top: 3px solid #10B981; border-right: 3px solid #10B981;"></div>
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 8px;">
+          <span style="color: #10B981; font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;">[ CAMERA MODES ]</span>
+          <span style="color: #FFFFFF; font-size: 0.85rem; font-weight: bold; background: #181818; padding: 2px 8px; border-radius: 12px;">
+            [ ${currentCatIdx + 1} / ${CAMERA_CATEGORIES.length} ]
+          </span>
+        </div>
+
+        <!-- Category Hero Card -->
+        <div class="cam-cat-card" style="width: 100%; border: 3px solid ${cat.color}; border-radius: 20px; padding: 26px 16px; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; box-shadow: 0 0 25px rgba(16, 185, 129, 0.15); margin: auto 0; cursor: pointer;">
+          
+          <div style="width: 85px; height: 85px; border-radius: 50%; border: 3px solid ${cat.color}; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03);">
+            <i class="fa-solid ${cat.icon}" style="font-size: 2.6rem; color: ${cat.color};"></i>
           </div>
-          <div style="text-align: center; background: rgba(0,0,0,0.6); padding: 4px; border-radius: 6px; font-size: 0.7rem; color: #FFEE55; font-weight: bold;">
-            <i class="fa-solid fa-crosshairs"></i> ALIGN TEXT / OBJECT IN VIEW
+
+          <div>
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 900; color: ${cat.color};">${cat.title}</h2>
+            <p style="margin: 6px 0 0 0; font-size: 0.8rem; color: #94A3B8;">${cat.subtitle}</p>
           </div>
-          <div style="display: flex; justify-content: space-between;">
-            <div style="width: 16px; height: 16px; border-bottom: 3px solid #10B981; border-left: 3px solid #10B981;"></div>
-            <div style="width: 16px; height: 16px; border-bottom: 3px solid #10B981; border-right: 3px solid #10B981;"></div>
+
+          <div style="margin-top: 4px; padding: 4px 12px; background: rgba(255,255,255,0.08); border-radius: 14px; font-size: 0.72rem; color: #FFEE55; font-weight: bold;">
+            Double Tap to Start Camera
           </div>
         </div>
-      </div>
 
-      <!-- Recognition Output Box -->
-      <div style="background: #0D131F; border: 1.5px solid #1E293B; border-radius: 12px; padding: 12px; min-height: 55px; display: flex; flex-direction: column; justify-content: center;">
-        <span style="font-size: 0.65rem; color: #64748B; font-weight: bold; text-transform: uppercase;">
-          ${activeMode === 'ocr' ? '● OCR RECOGNIZED TEXT' : '● AI SCENE ANALYSIS'}
-        </span>
-        <p id="cameraOutputText" style="margin: 4px 0 0 0; font-size: 0.85rem; color: #E2E8F0; line-height: 1.3; font-weight: 600;">
-          ${ocrResultText || 'Point camera and double tap to capture & read.'}
-        </p>
-      </div>
+        <div style="width: 100%; border-top: 1px dashed #333; padding-top: 8px; text-align: center;">
+          <span style="color: #64748B; font-size: 0.7rem;">Swipe Right/Left: Next/Prev Mode • Double Tap: Start</span>
+        </div>
 
-      <!-- Action Buttons -->
-      <div style="display: flex; gap: 8px;">
-        <button id="btnCaptureOcr" style="flex: 1; padding: 12px; background: #10B981; color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 0.85rem; cursor: pointer;">
-          <i class="fa-solid fa-font"></i> READ TEXT
+      </div>
+    `;
+
+    container.querySelector('.cam-cat-card')?.addEventListener('click', selectCameraCategory);
+    return;
+  }
+
+  // ----------------------------------------------------
+  // VIEW 2: ACTIVE 3-SECOND AUTO-HOLD CAPTURE SCREEN
+  // ----------------------------------------------------
+  if (cameraMode === 'activeHold') {
+    const cat = CAMERA_CATEGORIES[currentCatIdx];
+
+    container.innerHTML = `
+      <div style="width: 100%; height: 100%; box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; background: #000000; color: #FFFFFF; font-family: 'Outfit', system-ui, sans-serif;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 6px;">
+          <span style="color: ${cat.color}; font-size: 0.85rem; font-weight: 800;"><i class="fa-solid ${cat.icon}"></i> ${cat.title}</span>
+          <button id="btnCamToggleFlash" style="padding: 3px 8px; background: ${isFlashOn ? '#FFEE55' : '#1E293B'}; color: ${isFlashOn ? '#000' : '#FFF'}; border: 1px solid #FFEE55; border-radius: 4px; font-size: 0.72rem; font-weight: bold; cursor: pointer;">
+            ${isFlashOn ? 'Flash ON' : 'Flash OFF'}
+          </button>
+        </div>
+
+        <!-- Live Viewfinder with Countdown Overlay -->
+        <div style="border: 2.5px solid ${cat.color}; border-radius: 16px; overflow: hidden; position: relative; height: 210px; background: #07090E; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(16,185,129,0.15);">
+          <video id="cameraWebcamFeed" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+          
+          <!-- Auto Hold Countdown Circle -->
+          <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+            <div style="width: 70px; height: 70px; border-radius: 50%; border: 4px solid #FFEE55; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); animation: pulse 1s infinite alternate;">
+              <span id="holdCountdownNum" style="font-size: 2.2rem; font-weight: 900; color: #FFEE55; font-family: monospace;">
+                ${holdSecondsLeft}
+              </span>
+            </div>
+            <span style="font-size: 0.8rem; color: #FFFFFF; font-weight: bold; text-shadow: 0 0 6px #000;">
+              HOLD CAMERA STEADY...
+            </span>
+          </div>
+        </div>
+
+        <!-- Manual Capture Fallback Button -->
+        <button id="btnManualCapture" style="width: 100%; padding: 12px; background: ${cat.color}; color: #000; border: none; border-radius: 10px; font-weight: 900; font-size: 0.9rem; cursor: pointer;">
+          <i class="fa-solid fa-camera"></i> DOUBLE TAP TO SNAPSHOT NOW
         </button>
-        <button id="btnDescribeScene" style="flex: 1; padding: 12px; background: rgba(0, 229, 255, 0.15); border: 1.5px solid #00E5FF; color: #00E5FF; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer;">
-          <i class="fa-solid fa-eye"></i> SCENE
-        </button>
+
       </div>
+    `;
 
-    </div>
-  `;
+    startCameraFeed();
+    startHoldCountdown();
 
-  // Start webcam feed if available
-  startCameraStream();
+    document.getElementById('btnCamToggleFlash')?.addEventListener('click', toggleFlash);
+    document.getElementById('btnManualCapture')?.addEventListener('click', executeSnapshotCapture);
+    return;
+  }
 
-  // Button Handlers
-  document.getElementById('btnToggleFlash')?.addEventListener('click', toggleFlash);
-  document.getElementById('btnCaptureOcr')?.addEventListener('click', captureAndReadText);
-  document.getElementById('btnDescribeScene')?.addEventListener('click', describeScene);
+  // ----------------------------------------------------
+  // VIEW 3: SCAN RESULT (TTS + MORSE PLAYBACK)
+  // ----------------------------------------------------
+  if (cameraMode === 'result') {
+    stopHoldTimer();
+    const cat = CAMERA_CATEGORIES[currentCatIdx];
+
+    container.innerHTML = `
+      <div style="width: 100%; height: 100%; box-sizing: border-box; padding: 18px 14px; display: flex; flex-direction: column; justify-content: space-between; background: #000000; color: #FFFFFF; font-family: 'Outfit', system-ui, sans-serif;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 8px;">
+          <span style="color: #10B981; font-size: 0.85rem; font-weight: 900;">
+            <i class="fa-solid fa-check"></i> SCAN COMPLETED
+          </span>
+          <button id="btnBackToCamMenu" style="padding: 3px 8px; background: #1E293B; color: #FFF; border: 1px solid #475569; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+            Retake
+          </button>
+        </div>
+
+        <!-- Recognized Text Output Box -->
+        <div style="border: 2px solid #10B981; border-radius: 16px; padding: 18px; background: #07090E; margin: auto 0; display: flex; flex-direction: column; gap: 12px;">
+          <div style="font-size: 0.72rem; color: #00E5FF; font-weight: bold; text-transform: uppercase;">
+            ${cat.id === 'ocr' ? '● RECOGNIZED PRINTED TEXT' : '● SCENE OBJECT ANALYSIS'}
+          </div>
+          <p style="margin: 0; font-size: 1.15rem; line-height: 1.4; color: #FFFFFF; font-weight: 600;">
+            "${currentResultText}"
+          </p>
+
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <button id="btnReplayVoice" style="flex: 1; padding: 10px; background: #10B981; color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+              <i class="fa-solid fa-volume-high"></i> Replay Voice
+            </button>
+            <button id="btnPlayCamMorse" style="flex: 1; padding: 10px; background: rgba(255,238,85,0.15); border: 1px solid #FFEE55; color: #FFEE55; border-radius: 8px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+              <i class="fa-solid fa-wave-square"></i> Morse Haptic
+            </button>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed #333; padding-top: 6px; text-align: center;">
+          <span style="color: #64748B; font-size: 0.7rem;">Double Tap: Retake • Long Press: Back to Camera Menu</span>
+        </div>
+
+      </div>
+    `;
+
+    document.getElementById('btnBackToCamMenu')?.addEventListener('click', () => {
+      cameraMode = 'categoryMenu';
+      renderCamera();
+    });
+
+    document.getElementById('btnReplayVoice')?.addEventListener('click', () => {
+      Speech.speak(currentResultText);
+    });
+
+    document.getElementById('btnPlayCamMorse')?.addEventListener('click', () => {
+      Haptic.playMorse(currentResultText);
+      Speech.speak("Playing Morse vibration sequence.");
+    });
+    return;
+  }
 }
 
-export async function startCameraStream() {
-  const videoEl = document.getElementById('liveWebcamFeed');
+export async function startCameraFeed() {
+  const videoEl = document.getElementById('cameraWebcamFeed');
   if (!videoEl) return;
 
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -102,9 +201,68 @@ export async function startCameraStream() {
       }
       videoEl.srcObject = cameraStream;
     } catch (e) {
-      logSystem('[Camera] Live webcam unavailable, using high-accuracy AI simulator.', 'warning');
+      logSystem('[Camera] Live feed simulator active.', 'warning');
     }
   }
+}
+
+export function startHoldCountdown() {
+  stopHoldTimer();
+  holdSecondsLeft = 3;
+  isHoldingSteady = true;
+
+  holdTimer = setInterval(() => {
+    holdSecondsLeft--;
+    const numEl = document.getElementById('holdCountdownNum');
+    if (numEl) numEl.innerText = holdSecondsLeft;
+
+    if (holdSecondsLeft > 0) {
+      Haptic.trigger('short');
+      Speech.speak(`${holdSecondsLeft}`);
+    } else {
+      stopHoldTimer();
+      executeSnapshotCapture();
+    }
+  }, 1000);
+}
+
+export function stopHoldTimer() {
+  if (holdTimer) {
+    clearInterval(holdTimer);
+    holdTimer = null;
+  }
+  isHoldingSteady = false;
+}
+
+export function executeSnapshotCapture() {
+  stopHoldTimer();
+  Haptic.trigger('success');
+
+  const cat = CAMERA_CATEGORIES[currentCatIdx];
+  Speech.speak(cat.id === 'ocr' ? "Picture captured. Scanning printed text with AI OCR..." : "Picture captured. Scanning objects and environment scene...");
+
+  if (cat.id === 'ocr') {
+    const rand = sampleOcrTexts[Math.floor(Math.random() * sampleOcrTexts.length)];
+    currentResultText = rand;
+  } else {
+    const rand = sampleObjectScenes[Math.floor(Math.random() * sampleObjectScenes.length)];
+    currentResultText = rand;
+  }
+
+  setTimeout(() => {
+    cameraMode = 'result';
+    renderCamera();
+    Haptic.trigger('success');
+    Speech.speak(`Result: ${currentResultText}`);
+  }, 1200);
+}
+
+export function selectCameraCategory() {
+  const cat = CAMERA_CATEGORIES[currentCatIdx];
+  cameraMode = 'activeHold';
+  Haptic.trigger('success');
+  Speech.speak(`Starting ${cat.title}. Hold camera steady for 3 seconds to capture.`);
+  renderCamera();
 }
 
 export function toggleFlash() {
@@ -114,44 +272,49 @@ export function toggleFlash() {
   renderCamera();
 }
 
-export function captureAndReadText() {
-  activeMode = 'ocr';
-  Haptic.trigger('long');
-  Speech.speak("Capturing photo. Scanning text with AI optical character recognition...");
-
-  const keys = Object.keys(sampleOcrScenes);
-  const randomKey = keys[Math.floor(Math.random() * keys.length)];
-  ocrResultText = sampleOcrScenes[randomKey];
-
-  setTimeout(() => {
-    Haptic.trigger('success');
-    renderCamera();
-    Speech.speak(`Recognized text: ${ocrResultText}`);
-  }, 1200);
-}
-
-export function describeScene() {
-  activeMode = 'scene';
-  Haptic.trigger('long');
-  Speech.speak("Analyzing environment scene and obstacles...");
-
-  const keys = Object.keys(sampleSceneDescriptions);
-  const randomKey = keys[Math.floor(Math.random() * keys.length)];
-  ocrResultText = sampleSceneDescriptions[randomKey];
-
-  setTimeout(() => {
-    Haptic.trigger('success');
-    renderCamera();
-    Speech.speak(ocrResultText);
-  }, 1200);
-}
-
 export function handleCameraGesture(gesture) {
-  if (gesture === 'doubleTap' || gesture === 'tap') {
-    captureAndReadText();
-  } else if (gesture === 'swipeUp') {
-    describeScene();
-  } else if (gesture === 'swipeDown') {
-    toggleFlash();
+  // STATE: Category Menu
+  if (cameraMode === 'categoryMenu') {
+    if (gesture === 'swipeRight') {
+      currentCatIdx = (currentCatIdx + 1) % CAMERA_CATEGORIES.length;
+      Haptic.trigger('short');
+      renderCamera();
+      Speech.speak(CAMERA_CATEGORIES[currentCatIdx].title);
+    } else if (gesture === 'swipeLeft') {
+      currentCatIdx = (currentCatIdx - 1 + CAMERA_CATEGORIES.length) % CAMERA_CATEGORIES.length;
+      Haptic.trigger('short');
+      renderCamera();
+      Speech.speak(CAMERA_CATEGORIES[currentCatIdx].title);
+    } else if (gesture === 'doubleTap' || gesture === 'tap') {
+      selectCameraCategory();
+    }
+    return;
+  }
+
+  // STATE: Active Hold Viewfinder
+  if (cameraMode === 'activeHold') {
+    if (gesture === 'doubleTap' || gesture === 'tap') {
+      executeSnapshotCapture();
+    } else if (gesture === 'swipeDown' || gesture === 'longPress') {
+      stopHoldTimer();
+      cameraMode = 'categoryMenu';
+      Haptic.trigger('short');
+      Speech.speak("Returned to Camera Menu.");
+      renderCamera();
+    }
+    return;
+  }
+
+  // STATE: Result Screen
+  if (cameraMode === 'result') {
+    if (gesture === 'doubleTap') {
+      cameraMode = 'activeHold';
+      renderCamera();
+    } else if (gesture === 'longPress') {
+      cameraMode = 'categoryMenu';
+      Haptic.trigger('short');
+      Speech.speak("Returned to Camera Menu.");
+      renderCamera();
+    }
   }
 }

@@ -88,7 +88,13 @@ app.delete('/api/screens/:id', (req, res) => {
 // 1b. Visual phone sections. Coordinates are percentages of the phone canvas.
 app.get('/api/sections', (req, res) => {
   try {
-    const sections = db.prepare('SELECT * FROM interface_sections ORDER BY name ASC').all();
+    const { screen_id } = req.query;
+    let sections;
+    if (screen_id && screen_id !== 'ALL') {
+      sections = db.prepare('SELECT * FROM interface_sections WHERE screen_id = ? OR screen_id = "GLOBAL" ORDER BY name ASC').all(screen_id);
+    } else {
+      sections = db.prepare('SELECT * FROM interface_sections ORDER BY name ASC').all();
+    }
     res.json({ success: true, count: sections.length, sections });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -97,14 +103,14 @@ app.get('/api/sections', (req, res) => {
 
 app.post('/api/sections', (req, res) => {
   try {
-    const { id, name, x, y, width, height } = req.body;
+    const { id, name, screen_id = 'GLOBAL', x, y, width, height, color = '#EF4444' } = req.body;
     if (!id || !name || [x, y, width, height].some(value => !Number.isFinite(Number(value)))) {
       return res.status(400).json({ success: false, error: 'id, name, x, y, width, and height are required.' });
     }
     db.prepare(`
-      INSERT OR REPLACE INTO interface_sections (id, name, x, y, width, height, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).run(id, name, Number(x), Number(y), Number(width), Number(height));
+      INSERT OR REPLACE INTO interface_sections (id, name, screen_id, x, y, width, height, color, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(id, name, screen_id, Number(x), Number(y), Number(width), Number(height), color);
     const section = db.prepare('SELECT * FROM interface_sections WHERE id = ?').get(id);
     broadcastEvent('SECTION_UPDATED', section);
     res.json({ success: true, section });

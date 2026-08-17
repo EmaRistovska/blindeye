@@ -37,13 +37,22 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS interface_sections (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      screen_id TEXT DEFAULT 'GLOBAL',
       x REAL NOT NULL,
       y REAL NOT NULL,
       width REAL NOT NULL,
       height REAL NOT NULL,
+      color TEXT DEFAULT '#EF4444',
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try {
+    db.exec(`ALTER TABLE interface_sections ADD COLUMN screen_id TEXT DEFAULT 'GLOBAL'`);
+  } catch (e) {}
+  try {
+    db.exec(`ALTER TABLE interface_sections ADD COLUMN color TEXT DEFAULT '#EF4444'`);
+  } catch (e) {}
 
   // Seed default screens
   const insertScreen = db.prepare(`INSERT OR IGNORE INTO screens (id, name, parent_screen_id) VALUES (?, ?, ?)`);
@@ -51,11 +60,35 @@ export function initDatabase() {
   insertScreen.run('welcomeScreen', 'Welcome & Orientation', null);
   insertScreen.run('mainMenuScreen', 'Main Menu Categories', null);
   insertScreen.run('messagesView', 'Messages List & Detail', 'mainMenuScreen');
-  insertScreen.run('phoneView', 'Phone & Contacts', 'mainMenuScreen');
-  insertScreen.run('cameraView', 'Camera & AI Scene OCR', 'mainMenuScreen');
-  insertScreen.run('navigationView', 'GPS & Turn-by-Turn Guidance', 'mainMenuScreen');
-  insertScreen.run('settingsView', 'Settings & System Preferences', 'mainMenuScreen');
-  insertScreen.run('sosScreen', 'Emergency SOS Dispatch', null);
+  insertScreen.run('msgPrivacyReaderReplyScreen', 'Message Privacy Reader & Morse Reply', 'messagesView');
+  insertScreen.run('msgSendConfirmScreen', 'Message Send Confirmation', 'messagesView');
+  
+  insertScreen.run('phoneCategoryMenu', 'Phone Categories Menu', 'mainMenuScreen');
+  insertScreen.run('contactsListScreen', 'Contacts Directory', 'phoneCategoryMenu');
+  insertScreen.run('contactActionMenuScreen', 'Contact Actions Menu', 'contactsListScreen');
+  insertScreen.run('favoritesListScreen', 'Favorite Contacts', 'phoneCategoryMenu');
+  insertScreen.run('emergencyContactsListScreen', 'Emergency Contacts List', 'phoneCategoryMenu');
+  insertScreen.run('handwritingDialerScreen', 'Handwriting Keypad Dialer', 'phoneCategoryMenu');
+  insertScreen.run('dialerCallConfirmScreen', 'Dialer Call Confirmation', 'handwritingDialerScreen');
+  insertScreen.run('activeCallScreen', 'Active Connected Call', null);
+  
+  insertScreen.run('cameraCategoryMenu', 'Camera Categories Menu', 'mainMenuScreen');
+  insertScreen.run('cameraActiveHoldScreen', 'Camera Hold & Auto Capture', 'cameraCategoryMenu');
+  insertScreen.run('cameraResultScreen', 'Camera OCR / Scene Result', 'cameraCategoryMenu');
+  
+  insertScreen.run('navCategoryMenu', 'Navigation Categories Menu', 'mainMenuScreen');
+  insertScreen.run('navSearchInputScreen', 'Place Search Input', 'navCategoryMenu');
+  insertScreen.run('savedPlacesListScreen', 'Saved Destinations', 'navCategoryMenu');
+  insertScreen.run('navPlaceActionMenuScreen', 'Place Actions Menu', 'navCategoryMenu');
+  insertScreen.run('navActiveGuidanceScreen', 'Active GPS Guidance', 'navCategoryMenu');
+  
+  insertScreen.run('settingsCategoryMenu', 'Settings Categories Menu', 'mainMenuScreen');
+  insertScreen.run('settingsAccessibilityMenu', 'Accessibility Preferences', 'settingsCategoryMenu');
+  insertScreen.run('settingsQuickAccessScreen', 'Quick Actions Manager', 'settingsCategoryMenu');
+  insertScreen.run('settingsAddQuickActionScreen', 'Create Quick Action', 'settingsQuickAccessScreen');
+  insertScreen.run('settingsTutorialMenu', 'Tutorial Mode Menu', 'settingsCategoryMenu');
+  
+  insertScreen.run('sosScreen', 'Emergency SOS Countdown & Dispatch', null);
 
   // Seed default contextual gesture commands
   const insertCmd = db.prepare(`

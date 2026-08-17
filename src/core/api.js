@@ -142,70 +142,68 @@ export function onSectionUpdated(callback) {
   sectionUpdateListeners.push(callback);
 }
 
+async function apiFetch(path, options = {}) {
+  try {
+    let url = `${API_BASE}${path}`;
+    let res = await fetch(url, options);
+
+    // If proxy failed or returned non-JSON html 404, fallback to direct port 5000
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json') || !res.ok) {
+      if (location.port === '3000') {
+        const directUrl = `http://localhost:5000${API_BASE}${path}`;
+        res = await fetch(directUrl, options);
+      }
+    }
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error(`[API Error on ${path}]:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
 // ----------------------------------------------------
 // REST API HELPERS
 // ----------------------------------------------------
 
 export async function fetchScreens() {
-  try {
-    const res = await fetch(`${API_BASE}/screens`);
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message, screens: [] };
-  }
+  const result = await apiFetch('/screens');
+  return { success: result.success !== false, screens: result.screens || [] };
 }
 
 export async function createScreen(screenData) {
-  try {
-    const res = await fetch(`${API_BASE}/screens`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(screenData)
-    });
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-}
-
-export async function fetchSections() {
-  try {
-    const res = await fetch(`${API_BASE}/sections`);
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message, sections: [] };
-  }
-}
-
-export async function saveSection(sectionData) {
-  try {
-    const res = await fetch(`${API_BASE}/sections`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sectionData)
-    });
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-}
-
-export async function deleteSection(sectionId) {
-  try {
-    const res = await fetch(`${API_BASE}/sections/${encodeURIComponent(sectionId)}`, { method: 'DELETE' });
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  return await apiFetch('/screens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(screenData)
+  });
 }
 
 export async function deleteScreen(screenId) {
-  try {
-    const res = await fetch(`${API_BASE}/screens/${screenId}`, {
-      method: 'DELETE'
-    });
-    return await res.json();
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  return await apiFetch(`/screens/${encodeURIComponent(screenId)}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function fetchSections(screenId = null) {
+  const url = screenId ? `/sections?screen_id=${encodeURIComponent(screenId)}` : '/sections';
+  const result = await apiFetch(url);
+  return { success: result.success !== false, sections: result.sections || [] };
+}
+
+export async function saveSection(sectionData) {
+  return await apiFetch('/sections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sectionData)
+  });
+}
+
+export async function deleteSection(sectionId) {
+  return await apiFetch(`/sections/${encodeURIComponent(sectionId)}`, {
+    method: 'DELETE'
+  });
 }
 
 export async function fetchCommands(screenId = null) {

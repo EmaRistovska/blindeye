@@ -170,6 +170,7 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
     screenSelect.addEventListener('change', (e) => {
       const selectedScreen = e.target.value;
       updateSimulatorScreenContext(containerId, selectedScreen);
+      syncSimulatorSections(containerId);
     });
   }
 
@@ -237,10 +238,11 @@ async function syncSimulatorScreens(containerId) {
 async function syncSimulatorSections(containerId) {
   const sectionSelect = document.getElementById(`${containerId}_simSectionSelect`);
   if (!sectionSelect) return;
-  const res = await fetchSections();
-  if (res.success) {
+  const activeScreen = document.getElementById(`${containerId}_simScreenSelect`)?.value || 'ALL';
+  const res = await fetchSections(activeScreen);
+  if (res.success && res.sections) {
     const current = sectionSelect.value;
-    sectionSelect.innerHTML = '<option value="DEFAULT">General / no section</option>' + res.sections.map(section => `<option value="${section.id}">${section.name}</option>`).join('');
+    sectionSelect.innerHTML = '<option value="DEFAULT">DEFAULT (Full Screen / No Zone)</option>' + res.sections.map(section => `<option value="${section.id}">${section.name} (${section.screen_id || 'GLOBAL'})</option>`).join('');
     if ([...sectionSelect.options].some(option => option.value === current)) sectionSelect.value = current;
   }
 }
