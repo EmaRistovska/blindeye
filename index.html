@@ -36,14 +36,37 @@
   <header class="app-header">
     <div class="logo">
       <i class="fa-solid fa-eye-slash logo-icon"></i>
-      <h1>BlindEye <span class="logo-badge">Prototype Simulator</span></h1>
+      <h1>BlindEye <span class="logo-badge">Architecture v3.0</span></h1>
     </div>
+
+    <!-- Top Navigation Tabs -->
+    <div class="app-nav-tabs" style="display: flex; gap: 8px; align-items: center;">
+      <button class="nav-tab-btn" id="tabNavMobile" style="padding: 7px 14px; background: rgba(0, 229, 255, 0.12); border: 1.5px solid #00E5FF; color: #00E5FF; border-radius: 8px; font-weight: bold; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-mobile-screen"></i> Mobile App
+      </button>
+      <button class="nav-tab-btn" id="tabNavProgrammer" style="padding: 7px 14px; background: #111827; border: 1.5px solid #374151; color: #9CA3AF; border-radius: 8px; font-weight: bold; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-code-branch"></i> AI Programmer
+      </button>
+      <button class="nav-tab-btn" id="tabNavSimulator" style="padding: 7px 14px; background: #111827; border: 1.5px solid #374151; color: #9CA3AF; border-radius: 8px; font-weight: bold; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-gamepad"></i> Hardware Simulator
+      </button>
+      <button class="nav-tab-btn" id="tabNavPreview" style="padding: 7px 14px; background: #111827; border: 1.5px solid #374151; color: #9CA3AF; border-radius: 8px; font-weight: bold; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-columns"></i> Split Preview
+      </button>
+    </div>
+
     <div class="status-indicator">
-      <span class="pulse-dot"></span> Localhost Dev Server Mode
+      <span class="pulse-dot"></span> Live Sync Server Active
     </div>
   </header>
 
-  <main class="simulator-container">
+  <!-- TOP-LEVEL FULL-WIDTH DEVELOPER WORKBENCHES (Outside Phone Frame) -->
+  <div id="programmerScreen" class="full-view-pane" style="display: none; width: 100%; height: calc(100vh - 75px); box-sizing: border-box;"></div>
+  <div id="simulatorScreen" class="full-view-pane" style="display: none; width: 100%; height: calc(100vh - 75px); box-sizing: border-box;"></div>
+  <div id="previewScreen" class="full-view-pane" style="display: none; width: 100%; height: calc(100vh - 75px); box-sizing: border-box;"></div>
+
+  <!-- SMARTPHONE APP CONTAINER (For Mobile Views) -->
+  <main class="simulator-container" id="mobileAppContainer">
     <!-- LEFT: Smartphone Frame -->
     <section class="phone-column">
       <div class="phone-wrapper">
@@ -55,35 +78,20 @@
           <div class="volume-down button-physical"></div>
           <div class="power-button button-physical"></div>
 
-          <!-- Screen Screen Content -->
-          <!-- role=application tells screen readers that custom gestures
-               override their default swipe/tap interactions inside this element -->
+          <!-- Screen Content -->
           <div class="phone-screen" id="phoneScreen" role="application" aria-label="BlindEye phone simulator">
             <!-- Privacy Screen overlay (For Privacy Mode) -->
-            <!-- SECURITY NOTE: This overlay is intentionally blank (pure black).
-                 All communication happens via TTS/haptics only.
-                 The sr-only span is readable by TalkBack/VoiceOver but not visible. -->
             <div class="privacy-overlay" id="privacyOverlay">
               <span class="sr-only" aria-live="polite">
                 Privacy mode active. Screen is secured. Listen for voice instructions.
               </span>
             </div>
 
-
             <!-- Splash Screen -->
             <div class="screen-view" id="splashScreen"></div>
 
             <!-- Public Landing Screen -->
             <div class="screen-view" id="landingScreen"></div>
-
-            <!-- AI Programmer Engine Screen (Source of Truth) -->
-            <div class="screen-view" id="programmerScreen"></div>
-
-            <!-- Decoupled Standalone Simulator Screen -->
-            <div class="screen-view" id="simulatorScreen"></div>
-
-            <!-- Split Preview Screen -->
-            <div class="screen-view" id="previewScreen"></div>
 
             <!-- Welcome/Initial screen -->
             <div class="screen-view" id="welcomeScreen">

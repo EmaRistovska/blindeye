@@ -1,7 +1,7 @@
-// Centralized Application State Manager
-
 export let state = {
   db: null,
+  commandCache: new Map(), // key: `${screen_id}::${gesture_code}::${sub_context}`
+  screensCache: [],
   currentScreen: 'welcomeScreen',
   currentSubScreen: null,
   focusedIndex: 0,
