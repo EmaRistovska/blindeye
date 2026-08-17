@@ -1,406 +1,57 @@
-import { saveProgrammerCommand, deleteProgrammerCommand, fetchCommands, fetchScreens, createScreen, deleteScreen, exportConfig, importConfig, onRuleUpdated, onScreenUpdated } from '../core/api.js';
-import { Speech } from '../core/speech.js';
+import { createScreen, deleteProgrammerCommand, deleteSection, fetchCommands, fetchScreens, fetchSections, onRuleUpdated, onScreenUpdated, onSectionUpdated, saveProgrammerCommand, saveSection } from '../core/api.js';
 import { Haptic } from '../core/haptics.js';
 import { navigateTo } from '../core/router.js';
+import { Speech } from '../core/speech.js';
+
+const ACTIONS = ['NAVIGATE', 'NAVIGATE_NEXT', 'SELECT_ITEM', 'TRIGGER_TTS', 'AI_OCR_SCAN', 'CALL_CONTACT', 'READ_MESSAGE', 'START_GPS_GUIDE', 'DISPATCH_SOS'];
+const idFor = (name, type) => `${type}_${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || Date.now()}`;
 
 export function renderProgrammerScreen(containerId = 'programmerScreen') {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  const isSplitPane = containerId !== 'programmerScreen';
-
-  container.innerHTML = `
-    <div style="width: 100%; height: 100%; box-sizing: border-box; padding: ${isSplitPane ? '12px' : '20px'}; display: flex; flex-direction: column; gap: 14px; background: #07090E; color: #FFFFFF; font-family: 'Outfit', system-ui, sans-serif; overflow-y: auto;">
-      
-      <!-- Top Title & Navigation Bar -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00E5FF; padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(0, 229, 255, 0.15); border: 1px solid #00E5FF; display: flex; align-items: center; justify-content: center;">
-            <i class="fa-solid fa-code-branch" style="font-size: 1.4rem; color: #00E5FF;"></i>
-          </div>
-          <div>
-            <h2 style="margin: 0; font-size: 1.25rem; color: #00E5FF; font-weight: 900; letter-spacing: 0.5px;">AI PROGRAMMER WORKBENCH</h2>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <span style="font-size: 0.7rem; color: #FFEE55; font-weight: bold;">★ SOURCE OF TRUTH ★</span>
-              <span style="font-size: 0.65rem; color: #10B981; background: rgba(16,185,129,0.15); padding: 1px 6px; border-radius: 4px; border: 1px solid #10B981;">RULE AUTHORING ACTIVE</span>
-            </div>
-          </div>
-        </div>
-        ${!isSplitPane ? `
-        <div style="display: flex; gap: 8px;">
-          <button id="btnProgToSim" style="padding: 7px 12px; background: rgba(0, 229, 255, 0.12); border: 1px solid #00E5FF; color: #00E5FF; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
-            <i class="fa-solid fa-mobile-screen"></i> Simulator
-          </button>
-          <button id="btnProgToPreview" style="padding: 7px 12px; background: rgba(255, 238, 85, 0.12); border: 1px solid #FFEE55; color: #FFEE55; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
-            <i class="fa-solid fa-columns"></i> Split Preview
-          </button>
-        </div>` : ''}
+  const root = document.getElementById(containerId);
+  if (!root) return;
+  const key = name => `${containerId}_${name}`;
+  const split = containerId !== 'programmerScreen';
+  root.innerHTML = `
+    <div style="height:100%;box-sizing:border-box;overflow:auto;padding:${split ? '10px' : '20px'};background:#07090E;color:#fff;font-family:Outfit,system-ui,sans-serif;">
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:2px solid #00E5FF;"><div><h2 style="margin:0;color:#00E5FF;font-size:1.3rem;">AI PROGRAMMER WORKBENCH</h2><span style="font-size:.72rem;color:#94A3B8;">Draw a phone section → write screen scenarios → test in Simulator</span></div>${split ? '' : '<button id="btnProgToSim" style="padding:9px 12px;border:0;border-radius:8px;background:#FFEE55;color:#111827;font-weight:900;cursor:pointer;">Test in Simulator</button>'}</header>
+      <div style="display:grid;grid-template-columns:minmax(270px,.85fr) minmax(350px,1.4fr);gap:16px;margin-top:16px;align-items:start;">
+        <section style="padding:14px;border:1px solid #334155;border-radius:14px;background:#0B1220;"><strong style="color:#FFEE55;">1. PHONE SECTION MAP</strong><p style="margin:5px 0 10px;color:#94A3B8;font-size:.72rem;">Draw or drag red dashed interaction zones on this mock phone.</p><button id="${key('draw')}" style="padding:7px 10px;border:1px dashed #EF4444;border-radius:6px;background:rgba(239,68,68,.12);color:#FCA5A5;font-weight:bold;cursor:pointer;">Draw section</button>
+          <div id="${key('canvas')}" style="position:relative;touch-action:none;width:220px;height:440px;margin:14px auto;border:10px solid #111827;border-radius:30px;background:linear-gradient(#111827 0 9%,#020617 9%);box-shadow:0 0 0 2px #475569;overflow:hidden;cursor:crosshair;"><div style="position:absolute;top:17px;left:25%;width:50%;height:5px;border-radius:5px;background:#334155;pointer-events:none;"></div><div style="position:absolute;top:50%;left:0;right:0;text-align:center;color:#334155;font-size:.7rem;pointer-events:none;">PHONE MOCKUP<br><span style="font-size:.62rem;">drag red zones here</span></div></div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:7px;"><input id="${key('sectionName')}" placeholder="Section name, e.g. Battery" style="min-width:0;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"><button id="${key('saveSection')}" style="padding:8px;background:#EF4444;color:#fff;border:0;border-radius:6px;font-weight:bold;cursor:pointer;">Save zone</button></div><div id="${key('sectionHelp')}" style="min-height:18px;margin-top:7px;color:#94A3B8;font-size:.7rem;">Select Draw section, drag a zone, name it, then save.</div><div id="${key('sectionChips')}" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;"></div>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:12px;"><div style="padding:14px;border:1px solid #00E5FF;border-radius:14px;background:#0D1726;"><div style="display:flex;justify-content:space-between;gap:8px;"><div><strong style="color:#00E5FF;">2. SCENARIO BUILDER</strong><p style="margin:5px 0 0;color:#94A3B8;font-size:.72rem;">IF this section is used while this screen is active, THEN execute this function.</p></div><span id="${key('mode')}" style="color:#10B981;font-size:.7rem;">New scenario</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;"><label style="font-size:.7rem;color:#CBD5E1;">SECTION<select id="${key('section')}" style="width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"></select></label><label style="font-size:.7rem;color:#CBD5E1;">WHEN SCREEN IS<select id="${key('screen')}" style="width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"></select></label><label style="font-size:.7rem;color:#CBD5E1;">ACTIVATION<select id="${key('gesture')}" style="width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"><option value="TAP">Tap</option><option value="DOUBLE_TAP">Double tap</option><option value="LONG_PRESS">Long press</option><option value="SWIPE_RIGHT">Swipe right</option><option value="SWIPE_LEFT">Swipe left</option></select></label><label style="font-size:.7rem;color:#CBD5E1;">FUNCTION<select id="${key('action')}" style="width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;">${ACTIONS.map(action => `<option value="${action}">${action}</option>`).join('')}</select></label></div>
+          <label style="display:block;margin-top:9px;font-size:.7rem;color:#CBD5E1;">CUSTOM FUNCTION KEY <span style="color:#64748B;">(optional)</span><input id="${key('custom')}" placeholder="e.g. SHOW_BATTERY_DETAILS" style="box-sizing:border-box;width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"></label><label style="display:block;margin-top:9px;font-size:.7rem;color:#CBD5E1;">USER FEEDBACK / TTS<input id="${key('tts')}" placeholder="e.g. Battery is 82 percent and charging." style="box-sizing:border-box;width:100%;margin-top:4px;padding:8px;background:#111827;color:#fff;border:1px solid #475569;border-radius:6px;"></label><div style="display:flex;gap:8px;margin-top:12px;"><button id="${key('saveScenario')}" style="flex:1;padding:11px;border:0;border-radius:7px;background:#00E5FF;color:#000;font-weight:900;cursor:pointer;">SAVE SCENARIO & BROADCAST</button><button id="${key('cancel')}" style="display:none;padding:11px;border:1px solid #475569;border-radius:7px;background:#1E293B;color:#fff;cursor:pointer;">Cancel</button></div></div>
+          <div style="padding:14px;border:1px solid #334155;border-radius:14px;background:#0B1220;"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong style="color:#FFEE55;">3. SAVED SCENARIOS</strong><div style="display:flex;gap:6px;"><input id="${key('newScreen')}" placeholder="new screen name" style="width:120px;padding:6px;background:#111827;color:#fff;border:1px solid #475569;border-radius:5px;"><button id="${key('addScreen')}" style="padding:6px;background:#10B981;color:#052E16;border:0;border-radius:5px;font-weight:bold;cursor:pointer;">+ Add</button></div></div><div id="${key('feedback')}" style="min-height:18px;margin:7px 0;color:#94A3B8;font-size:.7rem;"></div><div id="${key('rules')}" style="display:flex;flex-direction:column;gap:7px;max-height:260px;overflow:auto;"></div></div>
+        </section>
       </div>
+    </div>`;
+  if (!split) document.getElementById('btnProgToSim')?.addEventListener('click', () => navigateTo('simulatorScreen'));
 
-      <!-- Quick Preset & Profile Loader Bar -->
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; background: #0D121D; padding: 10px; border-radius: 10px; border: 1px solid #1F293D; align-items: center;">
-        <span style="font-size: 0.75rem; color: #94A3B8; font-weight: bold; text-transform: uppercase;"><i class="fa-solid fa-wand-magic-sparkles"></i> Profiles:</span>
-        <button class="prog-preset-btn" data-profile="standard" style="padding: 4px 10px; background: #1E293B; color: #00E5FF; border: 1px solid #00E5FF; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">Standard Blind</button>
-        <button class="prog-preset-btn" data-profile="deafblind" style="padding: 4px 10px; background: #1E293B; color: #FFEE55; border: 1px solid #FFEE55; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">Deaf-Blind Morse</button>
-        <button class="prog-preset-btn" data-profile="simple" style="padding: 4px 10px; background: #1E293B; color: #10B981; border: 1px solid #10B981; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">Motor-Simplified</button>
-        
-        <div style="margin-left: auto; display: flex; gap: 6px;">
-          <button id="${containerId}_btnExport" style="padding: 4px 10px; background: #1E293B; color: #CBD5E1; border: 1px solid #475569; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">
-            <i class="fa-solid fa-download"></i> Export JSON
-          </button>
-          <button id="${containerId}_btnImport" style="padding: 4px 10px; background: #1E293B; color: #CBD5E1; border: 1px solid #475569; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">
-            <i class="fa-solid fa-upload"></i> Import JSON
-          </button>
-        </div>
-      </div>
-
-      <!-- State Machine Visual Screen Registry -->
-      <div style="border: 1px solid #1E293D; border-radius: 12px; padding: 12px; background: #0B0F17;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <h4 style="margin: 0; color: #00E5FF; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">
-            <i class="fa-solid fa-diagram-project"></i> Screen State Nodes
-          </h4>
-          <div style="display: flex; gap: 6px;">
-            <input type="text" id="${containerId}_newScreenId" placeholder="New screenId..." style="padding: 3px 8px; background: #151D2C; color: #FFF; border: 1px solid #334155; border-radius: 4px; font-size: 0.75rem; width: 110px;">
-            <button id="${containerId}_btnAddScreen" style="padding: 3px 8px; background: #00E5FF; color: #000; border: none; border-radius: 4px; font-weight: bold; font-size: 0.75rem; cursor: pointer;">+ Add</button>
-          </div>
-        </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="${containerId}_progStateNodes">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-
-      <!-- Contextual Command Rule Authoring Form -->
-      <div style="border: 1.5px solid #00E5FF; border-radius: 12px; padding: 14px; background: #0D131F; display: flex; flex-direction: column; gap: 10px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h4 style="margin: 0; color: #00E5FF; font-size: 0.95rem; font-weight: 800;">
-            <i class="fa-solid fa-sliders"></i> CONTEXTUAL COMMAND BUILDER
-          </h4>
-          <span style="font-size: 0.7rem; color: #94A3B8;">Define rule ➔ Broadcasts live</span>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 0.7rem; color: #94A3B8; display: block; margin-bottom: 3px; font-weight: bold;">TARGET SCREEN ID</label>
-            <select id="${containerId}_progScreenSelect" style="width: 100%; padding: 7px; background: #151D2C; color: #00E5FF; border: 1px solid #334155; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">
-              <!-- Populated dynamically -->
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size: 0.7rem; color: #94A3B8; display: block; margin-bottom: 3px; font-weight: bold;">GESTURE CODE</label>
-            <select id="${containerId}_progGestureSelect" style="width: 100%; padding: 7px; background: #151D2C; color: #FFEE55; border: 1px solid #334155; border-radius: 6px; font-weight: bold; font-size: 0.8rem;">
-              <option value="SWIPE_RIGHT">SWIPE_RIGHT</option>
-              <option value="SWIPE_LEFT">SWIPE_LEFT</option>
-              <option value="SWIPE_UP">SWIPE_UP</option>
-              <option value="SWIPE_DOWN">SWIPE_DOWN</option>
-              <option value="DOUBLE_TAP">DOUBLE_TAP</option>
-              <option value="LONG_PRESS">LONG_PRESS</option>
-              <option value="TWO_FINGER_TAP">TWO_FINGER_TAP</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 0.7rem; color: #94A3B8; display: block; margin-bottom: 3px; font-weight: bold;">ACTION TYPE</label>
-            <select id="${containerId}_progActionSelect" style="width: 100%; padding: 7px; background: #151D2C; color: #FFF; border: 1px solid #334155; border-radius: 6px; font-size: 0.8rem;">
-              <option value="NAVIGATE">NAVIGATE</option>
-              <option value="NAVIGATE_NEXT">NAVIGATE_NEXT</option>
-              <option value="NAVIGATE_PREV">NAVIGATE_PREV</option>
-              <option value="SELECT_ITEM">SELECT_ITEM</option>
-              <option value="TRIGGER_TTS">TRIGGER_TTS</option>
-              <option value="AI_OCR_SCAN">AI_OCR_SCAN</option>
-              <option value="AI_SCENE_DESCRIBE">AI_SCENE_DESCRIBE</option>
-              <option value="TOGGLE_FLASH">TOGGLE_FLASH</option>
-              <option value="CALL_CONTACT">CALL_CONTACT</option>
-              <option value="READ_MESSAGE">READ_MESSAGE</option>
-              <option value="PLAY_MORSE">PLAY_MORSE</option>
-              <option value="START_GPS_GUIDE">START_GPS_GUIDE</option>
-              <option value="CYCLE_SETTING">CYCLE_SETTING</option>
-              <option value="DISPATCH_SOS">DISPATCH_SOS</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size: 0.7rem; color: #94A3B8; display: block; margin-bottom: 3px; font-weight: bold;">HAPTIC SIGNATURE</label>
-            <select id="${containerId}_progHapticSelect" style="width: 100%; padding: 7px; background: #151D2C; color: #FFF; border: 1px solid #334155; border-radius: 6px; font-size: 0.8rem;">
-              <option value="short">Short Pulse (40ms)</option>
-              <option value="long">Long Pulse (150ms)</option>
-              <option value="success">Success Chime Pattern</option>
-              <option value="error">Error Alert Pattern</option>
-              <option value="warning">Warning Pulse</option>
-              <option value="sos">SOS Emergency Morse</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label style="font-size: 0.7rem; color: #94A3B8; display: block; margin-bottom: 3px; font-weight: bold;">SPOKEN TTS OUTPUT STRING</label>
-          <input type="text" id="${containerId}_progTtsInput" placeholder="e.g. Flashlight toggled on." style="width: 100%; padding: 8px; background: #151D2C; color: #FFF; border: 1px solid #334155; border-radius: 6px; box-sizing: border-box; font-size: 0.85rem;">
-        </div>
-
-        <button id="${containerId}_btnSaveRule" style="width: 100%; padding: 10px; background: #00E5FF; color: #000; font-weight: 900; border: none; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          <i class="fa-solid fa-floppy-disk"></i> COMMIT RULE & BROADCAST LIVE
-        </button>
-      </div>
-
-      <!-- Master Database Rules Explorer -->
-      <div style="border: 1px solid #1E293D; border-radius: 12px; padding: 12px; background: #0B0F17; flex: 1; display: flex; flex-direction: column; min-height: 180px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <h4 style="margin: 0; color: #FFEE55; font-size: 0.85rem; text-transform: uppercase;">
-              <i class="fa-solid fa-database"></i> Master Command Registry
-            </h4>
-            <span id="${containerId}_rulesCount" style="font-size: 0.7rem; color: #94A3B8; background: #151D2C; padding: 2px 6px; border-radius: 10px;">0 rules</span>
-          </div>
-          <div style="display: flex; gap: 6px; align-items: center;">
-            <select id="${containerId}_filterScreen" style="padding: 3px 8px; background: #151D2C; color: #CBD5E1; border: 1px solid #334155; border-radius: 4px; font-size: 0.75rem;">
-              <option value="ALL">All Screens</option>
-            </select>
-            <button id="${containerId}_btnRefresh" style="padding: 3px 8px; background: #1E293B; color: #FFF; border: 1px solid #334155; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-              <i class="fa-solid fa-arrows-rotate"></i>
-            </button>
-          </div>
-        </div>
-        <div id="${containerId}_progRulesList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; max-height: 240px;">
-          <!-- Dynamically populated rules -->
-        </div>
-      </div>
-
-    </div>
-  `;
-
-  // Bind top navigation buttons if present
-  if (!isSplitPane) {
-    document.getElementById('btnProgToSim')?.addEventListener('click', () => navigateTo('simulatorScreen'));
-    document.getElementById('btnProgToPreview')?.addEventListener('click', () => navigateTo('previewScreen'));
-  }
-
-  // Save Rule Handler
-  document.getElementById(`${containerId}_btnSaveRule`)?.addEventListener('click', async () => {
-    const screenId = document.getElementById(`${containerId}_progScreenSelect`).value;
-    const gestureCode = document.getElementById(`${containerId}_progGestureSelect`).value;
-    const actionType = document.getElementById(`${containerId}_progActionSelect`).value;
-    const hapticPattern = document.getElementById(`${containerId}_progHapticSelect`).value;
-    const ttsPrompt = document.getElementById(`${containerId}_progTtsInput`).value.trim() || 'Action executed.';
-
-    const ruleData = {
-      screen_id: screenId,
-      gesture_code: gestureCode,
-      sub_context: 'DEFAULT',
-      action_type: actionType,
-      haptic_pattern: hapticPattern,
-      action_payload: { tts: ttsPrompt, target: screenId },
-      created_by: 'AI_PROGRAMMER_ENGINE'
-    };
-
-    Haptic.trigger('success');
-    Speech.speak(`Rule saved for ${gestureCode} on ${screenId}`);
-
-    const res = await saveProgrammerCommand(ruleData);
-    if (res.success) {
-      loadProgrammerData(containerId);
-    } else {
-      Haptic.trigger('error');
-      Speech.speak("Failed to save rule.");
-    }
-  });
-
-  // Add Screen Handler
-  document.getElementById(`${containerId}_btnAddScreen`)?.addEventListener('click', async () => {
-    const input = document.getElementById(`${containerId}_newScreenId`);
-    const newId = input.value.trim();
-    if (!newId) return;
-
-    const res = await createScreen({ id: newId, name: newId, parent_screen_id: 'mainMenuScreen' });
-    if (res.success) {
-      input.value = '';
-      Haptic.trigger('success');
-      loadProgrammerData(containerId);
-    }
-  });
-
-  // Export & Import Handlers
-  document.getElementById(`${containerId}_btnExport`)?.addEventListener('click', async () => {
-    const res = await exportConfig();
-    if (res.success) {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `blindeye_rules_${Date.now()}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      Speech.speak("Rules exported to JSON.");
-    }
-  });
-
-  document.getElementById(`${containerId}_btnImport`)?.addEventListener('click', () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.json';
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const config = JSON.parse(evt.target.result);
-          const res = await importConfig(config, false);
-          if (res.success) {
-            Haptic.trigger('success');
-            Speech.speak("Configuration imported successfully.");
-            loadProgrammerData(containerId);
-          }
-        } catch (err) {
-          Haptic.trigger('error');
-          Speech.speak("Invalid JSON file.");
-        }
-      };
-      reader.readAsText(file);
-    };
-    fileInput.click();
-  });
-
-  // Filter change handler
-  document.getElementById(`${containerId}_filterScreen`)?.addEventListener('change', () => {
-    loadProgrammerData(containerId);
-  });
-
-  // Refresh button
-  document.getElementById(`${containerId}_btnRefresh`)?.addEventListener('click', () => {
-    loadProgrammerData(containerId);
-  });
-
-  // Presets profile buttons
-  container.querySelectorAll('.prog-preset-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const profile = btn.getAttribute('data-profile');
-      Haptic.trigger('success');
-      Speech.speak(`Loading ${profile} profile preset.`);
-      // Profile specific logic
-      if (profile === 'deafblind') {
-        await saveProgrammerCommand({
-          screen_id: 'messagesView',
-          gesture_code: 'DOUBLE_TAP',
-          sub_context: 'DEFAULT',
-          action_type: 'PLAY_MORSE',
-          haptic_pattern: 'sos',
-          action_payload: { tts: 'Morse output sequence active.' }
-        });
-      }
-      loadProgrammerData(containerId);
-    });
-  });
-
-  // Real-time synchronization hooks
-  onRuleUpdated(() => loadProgrammerData(containerId));
-  onScreenUpdated(() => loadProgrammerData(containerId));
-
-  loadProgrammerData(containerId);
-}
-
-async function loadProgrammerData(containerId) {
-  const nodesContainer = document.getElementById(`${containerId}_progStateNodes`);
-  const screenSelect = document.getElementById(`${containerId}_progScreenSelect`);
-  const filterSelect = document.getElementById(`${containerId}_filterScreen`);
-  const rulesContainer = document.getElementById(`${containerId}_progRulesList`);
-  const rulesCountEl = document.getElementById(`${containerId}_rulesCount`);
-
-  if (!rulesContainer) return;
-
-  try {
-    const [screensRes, commandsRes] = await Promise.all([
-      fetchScreens(),
-      fetchCommands()
-    ]);
-
-    // Populate screens list & state nodes
-    if (screensRes.success && screensRes.screens) {
-      const currentSelected = screenSelect ? screenSelect.value : null;
-      const currentFilter = filterSelect ? filterSelect.value : 'ALL';
-
-      if (nodesContainer) {
-        nodesContainer.innerHTML = screensRes.screens.map(s => `
-          <div style="padding: 4px 8px; border-radius: 16px; background: #151D2C; border: 1px solid #334155; color: #E2E8F0; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
-            <span style="font-weight: bold;">${s.id}</span>
-            <i class="fa-solid fa-xmark prog-delete-screen" data-id="${s.id}" style="color: #64748B; cursor: pointer; font-size: 0.7rem;" title="Delete screen"></i>
-          </div>
-        `).join('');
-
-        // Bind delete screen buttons
-        nodesContainer.querySelectorAll('.prog-delete-screen').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const id = btn.getAttribute('data-id');
-            if (confirm(`Delete screen "${id}" and all its rules?`)) {
-              await deleteScreen(id);
-              loadProgrammerData(containerId);
-            }
-          });
-        });
-      }
-
-      if (screenSelect) {
-        screenSelect.innerHTML = screensRes.screens.map(s => `
-          <option value="${s.id}">${s.id} (${s.name})</option>
-        `).join('');
-        if (currentSelected) screenSelect.value = currentSelected;
-      }
-
-      if (filterSelect) {
-        filterSelect.innerHTML = `<option value="ALL">All Screens</option>` + screensRes.screens.map(s => `
-          <option value="${s.id}">${s.id}</option>
-        `).join('');
-        if (currentFilter) filterSelect.value = currentFilter;
-      }
-    }
-
-    // Populate rules table
-    if (commandsRes.success && commandsRes.commands) {
-      const filterVal = filterSelect ? filterSelect.value : 'ALL';
-      const filtered = filterVal === 'ALL' ? commandsRes.commands : commandsRes.commands.filter(c => c.screen_id === filterVal);
-
-      if (rulesCountEl) rulesCountEl.innerText = `${filtered.length} rules`;
-
-      if (filtered.length === 0) {
-        rulesContainer.innerHTML = `<div style="text-align: center; color: #64748B; font-size: 0.75rem; padding: 12px;">No rules found for this screen. Add one above!</div>`;
-      } else {
-        rulesContainer.innerHTML = filtered.map(cmd => {
-          const payload = typeof cmd.action_payload === 'string' ? JSON.parse(cmd.action_payload) : cmd.action_payload;
-          return `
-            <div style="border: 1px solid #1E293B; border-radius: 8px; padding: 8px 10px; background: #131926; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
-              <div style="display: flex; flex-direction: column; gap: 2px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="color: #00E5FF; font-weight: bold;">[${cmd.screen_id}]</span>
-                  <span style="color: #FFEE55; font-weight: bold; background: rgba(255,238,85,0.1); padding: 1px 4px; border-radius: 3px;">${cmd.gesture_code}</span>
-                  <span style="color: #94A3B8;">➔ ${cmd.action_type}</span>
-                  <span style="color: #10B981; font-size: 0.65rem;">(${cmd.haptic_pattern})</span>
-                </div>
-                <div style="color: #CBD5E1; font-size: 0.7rem; font-style: italic;">"${payload.tts || ''}"</div>
-              </div>
-              <button class="prog-delete-rule-btn" data-id="${cmd.id}" style="background: rgba(239,68,68,0.15); border: 1px solid #EF4444; color: #EF4444; border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.7rem;" title="Delete Rule">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
-            </div>
-          `;
-        }).join('');
-
-        // Bind delete rule buttons
-        rulesContainer.querySelectorAll('.prog-delete-rule-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const ruleId = btn.getAttribute('data-id');
-            Haptic.trigger('error');
-            await deleteProgrammerCommand(ruleId);
-            loadProgrammerData(containerId);
-          });
-        });
-      }
-    }
-  } catch (e) {
-    if (rulesContainer) {
-      rulesContainer.innerHTML = `<span style="color: #FF5555; font-size: 0.75rem;">Failed to connect to backend server.</span>`;
-    }
-  }
+  const el = name => document.getElementById(key(name));
+  const data = { sections: [], screens: [], rules: [], selected: null, drawing: false, draft: null, moving: null, edit: null };
+  const notify = message => { el('feedback').innerText = message; };
+  const sectionHelp = message => { el('sectionHelp').innerText = message; };
+  const point = event => { const rect = el('canvas').getBoundingClientRect(); return { x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)), y: Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100)) }; };
+  const parse = rule => typeof rule.action_payload === 'string' ? JSON.parse(rule.action_payload) : rule.action_payload;
+  const render = () => {
+    const canvas = el('canvas'); canvas.querySelectorAll('.program-section').forEach(node => node.remove());
+    [...data.sections, ...(data.draft ? [{ ...data.draft, id:'draft', name:'New section' }] : [])].forEach(section => { const node = document.createElement('button'); node.className='program-section'; node.type='button'; Object.assign(node.style,{position:'absolute',left:`${section.x}%`,top:`${section.y}%`,width:`${section.width}%`,height:`${section.height}%`,border:'2px dashed #EF4444',borderRadius:'4px',background:section.id===data.selected?'rgba(239,68,68,.28)':'rgba(239,68,68,.08)',color:'#FECACA',fontSize:'.62rem',cursor:'move',overflow:'hidden'}); node.textContent=section.name; canvas.appendChild(node); node.addEventListener('pointerdown', event => { if(section.id==='draft') return; event.stopPropagation(); const p=point(event); data.selected=section.id; data.moving={id:section.id,x:section.x,y:section.y,origin:p}; render(); choices(); sectionHelp(`Selected “${section.name}”. Drag it to reposition or write a scenario.`); }); });
+    el('sectionChips').innerHTML = data.sections.length ? data.sections.map(section => `<button data-section="${section.id}" style="padding:5px 7px;border:1px dashed #EF4444;border-radius:5px;background:${section.id===data.selected?'#7F1D1D':'#1E293B'};color:#FECACA;cursor:pointer;">${section.name} ×</button>`).join('') : '<span style="font-size:.7rem;color:#64748B;">No sections saved.</span>';
+    el('sectionChips').querySelectorAll('[data-section]').forEach(button => button.addEventListener('click', async () => { const section=data.sections.find(item=>item.id===button.dataset.section); if(!section) return; if(data.selected===section.id && confirm(`Delete “${section.name}”?`)) { await deleteSection(section.id); } else { data.selected=section.id; render(); choices(); } }));
+  };
+  const choices = () => { el('section').innerHTML=data.sections.length?data.sections.map(section=>`<option value="${section.id}">${section.name}</option>`).join(''):'<option value="">Draw a section first</option>'; if(data.selected) el('section').value=data.selected; el('screen').innerHTML=data.screens.map(screen=>`<option value="${screen.id}">${screen.name}</option>`).join(''); };
+  const rules = () => { const title = sectionId => data.sections.find(section=>section.id===sectionId)?.name || sectionId || 'General'; el('rules').innerHTML=data.rules.length?data.rules.map(rule=>{const payload=parse(rule);return `<div style="display:flex;justify-content:space-between;gap:8px;padding:9px;border:1px solid #334155;border-radius:8px;background:#111827;font-size:.72rem;"><div><strong style="color:#EF4444;">${title(rule.sub_context)}</strong> on <strong style="color:#00E5FF;">${rule.screen_id}</strong><br><span style="color:#FFEE55;">${rule.gesture_code}</span> → ${rule.action_type}<br><span style="color:#CBD5E1;">${payload?.tts || ''}</span></div><div><button data-edit="${rule.id}" style="padding:4px;background:#0E7490;color:#fff;border:0;border-radius:4px;cursor:pointer;">Edit</button><button data-delete="${rule.id}" style="padding:4px;background:#7F1D1D;color:#fff;border:0;border-radius:4px;cursor:pointer;">Delete</button></div></div>`;}).join(''):'<span style="font-size:.75rem;color:#64748B;">Draw a section, then save a scenario.</span>'; el('rules').querySelectorAll('[data-edit]').forEach(button=>button.addEventListener('click',()=>{const rule=data.rules.find(item=>item.id===button.dataset.edit);if(!rule)return;const payload=parse(rule);data.edit=rule.id;data.selected=rule.sub_context;choices();el('section').value=rule.sub_context;el('screen').value=rule.screen_id;el('gesture').value=rule.gesture_code;el('action').value=ACTIONS.includes(rule.action_type)?rule.action_type:'TRIGGER_TTS';el('custom').value=ACTIONS.includes(rule.action_type)?'':rule.action_type;el('tts').value=payload?.tts||'';el('mode').innerText=`Editing ${rule.id}`;el('cancel').style.display='block';render();})); el('rules').querySelectorAll('[data-delete]').forEach(button=>button.addEventListener('click',()=>deleteProgrammerCommand(button.dataset.delete))); };
+  const load = async () => { const [sections,screens,commands]=await Promise.all([fetchSections(),fetchScreens(),fetchCommands()]); data.sections=sections.sections||[];data.screens=screens.screens||[];data.rules=commands.commands||[];if(!data.selected)data.selected=data.sections[0]?.id||null;render();choices();rules(); };
+  const reset = () => { data.edit=null;el('mode').innerText='New scenario';el('cancel').style.display='none';el('custom').value='';el('tts').value=''; };
+  el('draw').addEventListener('click',()=>{data.drawing=!data.drawing;data.draft=null;el('draw').style.background=data.drawing?'#EF4444':'rgba(239,68,68,.12)';sectionHelp(data.drawing?'Draw mode on: click the first corner of the section.':'Draw mode cancelled.');render();});
+  el('canvas').addEventListener('click',event=>{if(!data.drawing||event.target.closest('.program-section'))return;const p=point(event);if(!data.draft){data.draft={x:p.x,y:p.y,width:2,height:2};sectionHelp('Start point set. Click the opposite corner to finish the section.');render();return;}const start=data.draft;data.draft={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),width:Math.max(2,Math.abs(p.x-start.x)),height:Math.max(2,Math.abs(p.y-start.y))};data.drawing=false;el('draw').style.background='rgba(239,68,68,.12)';el('sectionName').focus();sectionHelp('End point set. Name this new section and save it.');render();});
+  el('canvas').addEventListener('pointermove',event=>{if(!data.moving)return;const p=point(event);const section=data.sections.find(item=>item.id===data.moving.id);if(section){section.x=Math.max(0,Math.min(100-section.width,data.moving.x+p.x-data.moving.origin.x));section.y=Math.max(0,Math.min(100-section.height,data.moving.y+p.y-data.moving.origin.y));render();}});
+  el('canvas').addEventListener('pointerup',async()=>{if(!data.moving)return;const section=data.sections.find(item=>item.id===data.moving.id);data.moving=null;if(section)await saveSection(section);});
+  el('saveSection').addEventListener('click',async()=>{const name=el('sectionName').value.trim();if(!data.draft||!name)return sectionHelp('Draw a section and enter a name first.');const section={...data.draft,id:idFor(name,'section'),name};const result=await saveSection(section);if(result.success){data.draft=null;data.selected=section.id;el('sectionName').value='';sectionHelp(`Saved “${name}”. Select a screen and write its scenario.`);await load();}else sectionHelp(result.error||'Could not save section.');});
+  el('section').addEventListener('change',event=>{data.selected=event.target.value;render();});
+  el('saveScenario').addEventListener('click',async()=>{const section=el('section').value;if(!section)return notify('Draw and select a phone section first.');const action=el('custom').value.trim()||el('action').value;const result=await saveProgrammerCommand({...(data.edit?{id:data.edit}:{}),screen_id:el('screen').value,gesture_code:el('gesture').value,sub_context:section,action_type:action,action_payload:{tts:el('tts').value.trim()||`${action} for ${section}.`,target:section},haptic_pattern:'success',created_by:'AI_PROGRAMMER_WORKBENCH'});if(result.success){notify('Scenario saved and broadcast. Test it in Simulator.');Haptic.trigger('success');Speech.speak('Scenario saved.');reset();await load();}else notify(result.error||'Could not save scenario.');});
+  el('cancel').addEventListener('click',reset);
+  el('addScreen').addEventListener('click',async()=>{const input=el('newScreen');const name=input.value.trim();if(!name)return notify('Enter a screen name before adding it.');const result=await createScreen({id:idFor(name,'screen'),name,parent_screen_id:null});if(result.success){input.value='';notify(`Screen “${name}” added.`);await load();}else notify(result.error||'Could not add screen.');});
+  onRuleUpdated(load);onScreenUpdated(load);onSectionUpdated(load);load();
 }

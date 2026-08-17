@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'blindeye.db');
+const dbPath = process.env.BLINDEYE_DB_PATH || path.join(__dirname, 'blindeye.db');
 export const db = new Database(dbPath);
 
 // Enable foreign keys
@@ -32,6 +32,16 @@ export function initDatabase() {
       created_by TEXT DEFAULT 'AI_PROGRAMMER',
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT unique_contextual_gesture UNIQUE (screen_id, gesture_code, sub_context)
+    );
+
+    CREATE TABLE IF NOT EXISTS interface_sections (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      width REAL NOT NULL,
+      height REAL NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 

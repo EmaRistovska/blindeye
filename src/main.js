@@ -55,6 +55,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Start on Splash screen
-  navigateTo('splashScreen');
+  // Start directly on the workspace choice screen.
+  navigateTo('landingScreen');
 });

@@ -1,4 +1,4 @@
-import { resolveLocalCommand, syncLocalCommandCache, onRuleUpdated, onScreenUpdated, fetchScreens } from '../core/api.js';
+import { resolveLocalCommand, syncLocalCommandCache, onRuleUpdated, onScreenUpdated, onSectionUpdated, fetchScreens, fetchSections } from '../core/api.js';
 import { Speech } from '../core/speech.js';
 import { Haptic } from '../core/haptics.js';
 import { navigateTo } from '../core/router.js';
@@ -41,7 +41,7 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
       </div>
 
       <!-- Active Screen Context Switcher -->
-      <div style="display: flex; justify-content: space-between; align-items: center; background: #111827; padding: 8px 12px; border-radius: 8px; border: 1px solid #1F2937;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #111827; padding: 8px 12px; border-radius: 8px; border: 1px solid #1F2937;">
         <div style="display: flex; align-items: center; gap: 6px;">
           <i class="fa-solid fa-layer-group" style="color: #FFEE55; font-size: 0.85rem;"></i>
           <span style="font-size: 0.8rem; color: #9CA3AF; font-weight: bold;">Simulated Screen Context:</span>
@@ -49,6 +49,8 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
         <select id="${containerId}_simScreenSelect" style="padding: 5px 10px; background: #1F2937; color: #00E5FF; border: 1.5px solid #00E5FF; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
           <!-- Dynamically populated -->
         </select>
+        <div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-vector-square" style="color:#EF4444;font-size:.85rem;"></i><span style="font-size:.8rem;color:#9CA3AF;font-weight:bold;">Phone section:</span></div>
+        <select id="${containerId}_simSectionSelect" style="padding: 5px 10px; background: #1F2937; color: #FCA5A5; border: 1.5px dashed #EF4444; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;"><option value="DEFAULT">General / no section</option></select>
       </div>
 
       <!-- Device Viewport & Parity Inspector Grid -->
@@ -141,6 +143,7 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
           <button class="sim-test-btn" data-gesture="SWIPE_LEFT" style="padding: 8px; background: #1E293B; color: #FFF; border: 1px solid #334155; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">⬅ Swipe Left</button>
           <button class="sim-test-btn" data-gesture="SWIPE_UP" style="padding: 8px; background: #1E293B; color: #FFF; border: 1px solid #334155; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">⬆ Swipe Up</button>
           <button class="sim-test-btn" data-gesture="SWIPE_DOWN" style="padding: 8px; background: #1E293B; color: #FFF; border: 1px solid #334155; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">⬇ Swipe Down</button>
+          <button class="sim-test-btn" data-gesture="TAP" style="padding: 8px; background: #1E293B; color: #FCA5A5; border: 1px dashed #EF4444; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">Tap Section</button>
           <button class="sim-test-btn" data-gesture="DOUBLE_TAP" style="padding: 8px; background: #1E293B; color: #00E5FF; border: 1px solid #00E5FF; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">Double Tap</button>
           <button class="sim-test-btn" data-gesture="LONG_PRESS" style="padding: 8px; background: #1E293B; color: #FFEE55; border: 1px solid #FFEE55; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">Long Press (600ms)</button>
           <button class="sim-test-btn" data-gesture="TWO_FINGER_TAP" style="padding: 8px; background: #1E293B; color: #10B981; border: 1px solid #10B981; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.75rem;">Two-Finger Tap</button>
@@ -175,7 +178,8 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
     btn.addEventListener('click', () => {
       const gesture = btn.getAttribute('data-gesture');
       const activeScreen = document.getElementById(`${containerId}_simScreenSelect`)?.value || 'welcomeScreen';
-      executeSimulatorGesture(containerId, gesture, activeScreen);
+      const activeSection = document.getElementById(`${containerId}_simSectionSelect`)?.value || 'DEFAULT';
+      executeSimulatorGesture(containerId, gesture, activeScreen, activeSection);
     });
   });
 
@@ -192,7 +196,8 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
   // Touch Navigation Zone Click Handler
   document.getElementById(`${containerId}_touchNavZone`)?.addEventListener('click', () => {
     const activeScreen = document.getElementById(`${containerId}_simScreenSelect`)?.value || 'welcomeScreen';
-    executeSimulatorGesture(containerId, 'DOUBLE_TAP', activeScreen);
+    const activeSection = document.getElementById(`${containerId}_simSectionSelect`)?.value || 'DEFAULT';
+    executeSimulatorGesture(containerId, 'DOUBLE_TAP', activeScreen, activeSection);
   });
 
   // Sync screens and listen to rule updates
@@ -207,7 +212,9 @@ export function renderSimulatorScreen(containerId = 'simulatorScreen') {
     }
   });
 
-  onScreenUpdated(() => syncSimulatorScreens(containerId));
+  onScreenUpdated(() => { syncSimulatorScreens(containerId); syncSimulatorSections(containerId); });
+  onSectionUpdated(() => syncSimulatorSections(containerId));
+  syncSimulatorSections(containerId);
 }
 
 async function syncSimulatorScreens(containerId) {
@@ -224,6 +231,17 @@ async function syncSimulatorScreens(containerId) {
       screenSelect.value = currentVal;
     }
     updateSimulatorScreenContext(containerId, screenSelect.value || 'welcomeScreen');
+  }
+}
+
+async function syncSimulatorSections(containerId) {
+  const sectionSelect = document.getElementById(`${containerId}_simSectionSelect`);
+  if (!sectionSelect) return;
+  const res = await fetchSections();
+  if (res.success) {
+    const current = sectionSelect.value;
+    sectionSelect.innerHTML = '<option value="DEFAULT">General / no section</option>' + res.sections.map(section => `<option value="${section.id}">${section.name}</option>`).join('');
+    if ([...sectionSelect.options].some(option => option.value === current)) sectionSelect.value = current;
   }
 }
 
@@ -250,7 +268,7 @@ function updateSimulatorScreenContext(containerId, screenId) {
   if (icon) icon.innerHTML = `<i class="fa-solid ${currentMeta.icon}" style="color: ${currentMeta.color};"></i>`;
 }
 
-export function executeSimulatorGesture(containerId, gestureCode, screenId) {
+export function executeSimulatorGesture(containerId, gestureCode, screenId, subContext = 'DEFAULT') {
   const ttsLog = document.getElementById(`${containerId}_simTtsLog`);
   const hapticBar = document.getElementById(`${containerId}_hapticBar`);
   const parityStatus = document.getElementById(`${containerId}_parityStatus`);
@@ -260,7 +278,7 @@ export function executeSimulatorGesture(containerId, gestureCode, screenId) {
   const ruleLatencyEl = document.getElementById(`${containerId}_ruleLatency`);
 
   // Instant local rule cache lookup (<1ms)
-  const res = resolveLocalCommand(screenId, gestureCode, 'DEFAULT');
+  const res = resolveLocalCommand(screenId, gestureCode, subContext);
 
   if (res.success && res.command) {
     const cmd = res.command;

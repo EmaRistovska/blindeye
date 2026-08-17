@@ -85,6 +85,45 @@ app.delete('/api/screens/:id', (req, res) => {
   }
 });
 
+// 1b. Visual phone sections. Coordinates are percentages of the phone canvas.
+app.get('/api/sections', (req, res) => {
+  try {
+    const sections = db.prepare('SELECT * FROM interface_sections ORDER BY name ASC').all();
+    res.json({ success: true, count: sections.length, sections });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sections', (req, res) => {
+  try {
+    const { id, name, x, y, width, height } = req.body;
+    if (!id || !name || [x, y, width, height].some(value => !Number.isFinite(Number(value)))) {
+      return res.status(400).json({ success: false, error: 'id, name, x, y, width, and height are required.' });
+    }
+    db.prepare(`
+      INSERT OR REPLACE INTO interface_sections (id, name, x, y, width, height, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(id, name, Number(x), Number(y), Number(width), Number(height));
+    const section = db.prepare('SELECT * FROM interface_sections WHERE id = ?').get(id);
+    broadcastEvent('SECTION_UPDATED', section);
+    res.json({ success: true, section });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/sections/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM interface_sections WHERE id = ?').run(id);
+    broadcastEvent('SECTION_DELETED', { id });
+    res.json({ success: true, deleted_id: id });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 2. Query contextual commands (Normalized JSON payloads)
 app.get('/api/commands', (req, res) => {
   try {
@@ -213,11 +252,13 @@ app.get('/api/export', (req, res) => {
     const screens = db.prepare('SELECT * FROM screens ORDER BY name ASC').all();
     const rawCommands = db.prepare('SELECT * FROM contextual_commands ORDER BY screen_id ASC').all();
     const commands = rawCommands.map(parsePayload);
+    const sections = db.prepare('SELECT * FROM interface_sections ORDER BY name ASC').all();
     res.json({
       success: true,
       version: '3.0.0',
       exported_at: new Date().toISOString(),
       screens,
+      sections,
       commands
     });
   } catch (err) {
@@ -228,12 +269,13 @@ app.get('/api/export', (req, res) => {
 // 7. Import configuration
 app.post('/api/import', (req, res) => {
   try {
-    const { screens = [], commands = [], clear_existing = false } = req.body;
+    const { screens = [], sections = [], commands = [], clear_existing = false } = req.body;
 
     const importTx = db.transaction(() => {
       if (clear_existing) {
         db.prepare('DELETE FROM contextual_commands').run();
         db.prepare('DELETE FROM screens').run();
+        db.prepare('DELETE FROM interface_sections').run();
       }
 
       const insertScreen = db.prepare(`
@@ -242,6 +284,14 @@ app.post('/api/import', (req, res) => {
       `);
       for (const s of screens) {
         insertScreen.run(s.id, s.name, s.parent_screen_id || null);
+      }
+
+      const insertSection = db.prepare(`
+        INSERT OR REPLACE INTO interface_sections (id, name, x, y, width, height, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `);
+      for (const section of sections) {
+        insertSection.run(section.id, section.name, section.x, section.y, section.width, section.height);
       }
 
       const insertCmd = db.prepare(`
@@ -265,7 +315,7 @@ app.post('/api/import', (req, res) => {
     });
 
     importTx();
-    broadcastEvent('CONFIG_IMPORTED', { screens_count: screens.length, commands_count: commands.length });
+    broadcastEvent('CONFIG_IMPORTED', { screens_count: screens.length, sections_count: sections.length, commands_count: commands.length });
     res.json({ success: true, message: 'Configuration imported successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

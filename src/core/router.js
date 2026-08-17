@@ -24,6 +24,7 @@ export function navigateTo(screenId, subScreenId = null) {
 
   // Check if screenId is a top-level developer workbench
   const isFullWorkbench = (screenId === 'programmerScreen' || screenId === 'simulatorScreen' || screenId === 'previewScreen');
+  document.body.classList.toggle('landing-mode', screenId === 'landingScreen');
 
   if (isFullWorkbench) {
     if (mobileContainer) mobileContainer.style.display = 'none';

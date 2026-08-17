@@ -123,6 +123,26 @@ body {
 }
 
 /* Header */
+/* Workspace chooser: on desktop, keep the entry experience focused on the phone only. */
+body.landing-mode .app-header,
+body.landing-mode .dashboard-column,
+body.landing-mode .app-footer-bar {
+  display: none !important;
+}
+
+body.landing-mode .simulator-container {
+  min-height: 100vh;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+body.landing-mode .phone-column {
+  width: min(100%, 430px);
+  margin: 0 auto;
+}
+
 .app-header {
   padding: 1.5rem 2rem;
   background: var(--panel-bg);

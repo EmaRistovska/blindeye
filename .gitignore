@@ -18,6 +18,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local SQLite databases (the currently tracked prototype database will remain tracked until it is migrated)
+server/*.db
+
 # OS files
 .DS_Store
 Thumbs.db

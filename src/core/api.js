@@ -6,6 +6,7 @@ const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + (locatio
 let socket = null;
 let ruleUpdateListeners = [];
 let screenUpdateListeners = [];
+let sectionUpdateListeners = [];
 
 // Generate cache key
 export function getCacheKey(screenId, gestureCode, subContext = 'DEFAULT') {
@@ -107,6 +108,9 @@ export function initWebSocketSync() {
           logSystem(`[WS Client] Rule deleted from cache: ${gesture_code} on ${screen_id}`, 'action');
           ruleUpdateListeners.forEach(listener => listener(data.payload, 'DELETE'));
         }
+        else if (data.type === 'SECTION_UPDATED' || data.type === 'SECTION_DELETED') {
+          sectionUpdateListeners.forEach(listener => listener(data));
+        }
         else if (data.type === 'SCREEN_UPDATED' || data.type === 'SCREEN_DELETED' || data.type === 'CONFIG_IMPORTED') {
           syncLocalCommandCache().then(() => {
             screenUpdateListeners.forEach(listener => listener(data));
@@ -134,6 +138,10 @@ export function onScreenUpdated(callback) {
   screenUpdateListeners.push(callback);
 }
 
+export function onSectionUpdated(callback) {
+  sectionUpdateListeners.push(callback);
+}
+
 // ----------------------------------------------------
 // REST API HELPERS
 // ----------------------------------------------------
@@ -154,6 +162,35 @@ export async function createScreen(screenData) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(screenData)
     });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function fetchSections() {
+  try {
+    const res = await fetch(`${API_BASE}/sections`);
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message, sections: [] };
+  }
+}
+
+export async function saveSection(sectionData) {
+  try {
+    const res = await fetch(`${API_BASE}/sections`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sectionData)
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function deleteSection(sectionId) {
+  try {
+    const res = await fetch(`${API_BASE}/sections/${encodeURIComponent(sectionId)}`, { method: 'DELETE' });
     return await res.json();
   } catch (e) {
     return { success: false, error: e.message };
