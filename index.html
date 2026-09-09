@@ -93,22 +93,17 @@
             <!-- Public Landing Screen -->
             <div class="screen-view" id="landingScreen"></div>
 
-            <!-- Welcome/Initial screen -->
-            <div class="screen-view" id="welcomeScreen">
-              <div class="welcome-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
-                <div style="margin-top: 40px;"></div>
-                <i class="fa-solid fa-hands-holding-child welcome-logo"></i>
-                <h2>Welcome to BlindEye</h2>
-              </div>
-            </div>
+            <!-- Welcome Screen — content rendered dynamically by welcome.js -->
+            <div class="screen-view" id="welcomeScreen"
+              style="background: #000000; width: 100%; height: 100%;"></div>
 
             <!-- Onboarding Biometric Auth Screen -->
             <div class="screen-view" id="onboardingAuthScreen"
               style="background: #000000; position: absolute; inset: 0; z-index: 99999; display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
               <div class="auth-card" style="text-align: center; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px; box-sizing: border-box; width: 100%;">
                 <h2 style="color: #00E5FF; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 1px;">DEVICE AUTHENTICATION</h2>
-                <div class="biometric-scanner-ring" style="position: relative; width: 120px; height: 120px; border-radius: 50%; border: 3px dashed #00E5FF; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                  <i class="fa-solid fa-fingerprint" style="font-size: 3.5rem; color: #00E5FF;"></i>
+                <div class="biometric-scanner-ring" style="position: relative; width: 120px; height: 120px; border-radius: 50%; border: 3px dashed #FFCC00; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                  <i class="fa-solid fa-fingerprint" style="font-size: 3.5rem; color: #FFCC00;"></i>
                 </div>
                 <p id="onboardingAuthStatus" style="font-size: 0.95rem; line-height: 1.5; margin: 0; color: #CCCCCC;">Place your finger anywhere on the screen to authenticate.</p>
               </div>
@@ -124,22 +119,23 @@
 
             <!-- Tutorial / Calibration screen -->
             <div class="screen-view" id="tutorialScreen"
-              style="background: #000000; position: relative; width: 100%; height: 100%; flex-direction: column;">
-              <div class="tutorial-header"
-                style="display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; padding: 16px 20px; text-align: center; border-bottom: 1px dashed #444; flex-shrink: 0;">
-                <h2 style="color: #FFCC00; font-size: 1.3rem; margin: 0; font-weight: 800; text-transform: uppercase;">
-                  LETTER CALIBRATION</h2>
-                <div id="tutorialLetterCounter"
-                  style="color: #FFFFFF; font-size: 1.1rem; font-weight: bold; margin-top: 6px;">Draw letter M [ 1 / 3 ]
-                </div>
-                <div id="tutorialInstructionText" style="color: #FFCC00; font-size: 0.85rem; margin-top: 4px;">Draw the
-                  letter on the screen</div>
+              style="background: #000000; width: 100%; height: 100%; box-sizing: border-box; padding: 44px 14px 20px 14px; display: none; flex-direction: column; justify-content: space-between; align-items: center; position: relative;">
+              
+              <!-- Screen Top Header -->
+              <div style="width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; flex-shrink: 0; border-bottom: 1.5px solid #222; padding-bottom: 8px;">
+                <h2 style="color: #FFEE55; font-size: 1.25rem; margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">LETTER CALIBRATION</h2>
+                <div id="tutorialLetterCounter" style="color: #FFFFFF; font-size: 1rem; font-weight: bold; margin-top: 2px;">Draw letter M [ 1 / 3 ]</div>
+                <div id="tutorialInstructionText" style="color: #94A3B8; font-size: 0.78rem; line-height: 1.3; max-width: 280px;">Draw letter M on the screen to teach the system your style</div>
               </div>
-              <canvas class="handwriting-canvas" id="tutorialCanvas"
-                style="width: 100%; flex: 1; display: block; background: #000000; touch-action: none;"></canvas>
-              <div style="border-top: 1px dashed #444; width: 100%; padding: 10px; text-align: center; flex-shrink: 0;">
-                <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Draw letter 3 times to calibrate
-                  stroke profile ]</span>
+
+              <!-- Framed Canvas Container -->
+              <div style="width: 100%; flex: 1; margin: 10px 0; border: 2px solid #334155; border-radius: 18px; overflow: hidden; background: #000000; display: flex; align-items: center; justify-content: center; box-sizing: border-box; position: relative;">
+                <canvas class="handwriting-canvas" id="tutorialCanvas" style="width: 100%; height: 100%; display: block; background: #000000; touch-action: none;"></canvas>
+              </div>
+
+              <!-- Bottom Hint Line -->
+              <div style="width: 100%; text-align: center; flex-shrink: 0; padding-top: 2px;">
+                <span style="color: #FFEE55; font-size: 0.78rem; font-weight: bold;">[ Draw letter 3 times to calibrate stroke profile ]</span>
               </div>
             </div>
 
@@ -245,79 +241,11 @@
             </div>
 
             <!-- Phone screen -->
-            <div class="screen-view" id="callsScreen">
-              <!-- Submodule: Phone Sub-Menu (Single Focus Hero Card View) -->
-              <div class="sub-screen active" id="callsMenuView">
-                <div class="module-title-bar">
-                  <i class="fa-solid fa-phone"></i> Phone
-                </div>
-                <div class="module-cards-container single-focus-container" id="callsMenuContainer">
-                  <div class="single-focus-hero-card focused">
-                    <div class="hero-card-header">
-                      <span class="hero-category-tag"><i class="fa-solid fa-phone"></i> OPTION</span>
-                      <span class="msg-counter-badge" id="callsCounterBadge">[ 1 / 4 ]</span>
-                    </div>
-
-                    <div class="hero-icon-circle">
-                      <i class="fa-solid fa-address-book hero-center-icon" id="callsHeroIcon"></i>
-                    </div>
-
-                    <div class="hero-title-group">
-                      <h2 class="hero-category-title" id="callsHeroTitle">CONTACTS</h2>
-                      <!-- <p class="hero-category-subtitle" id="callsHeroSubtitle">"Browse and search your phonebook"</p> -->
-                    </div>
-
-                    <div class="hero-card-footer-hint" id="callsHeroFooter">
-                      [ Two-Finger Swipe Down: Quick Access • Long Press: Back ]
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Submodule: Contacts List -->
-              <div class="sub-screen" id="contactsView">
-                <div class="module-title-bar">Contacts</div>
-                <div class="module-cards-container" id="contactsContainer"></div>
-              </div>
-
-              <!-- Submodule: Contact Actions (Single Focus Card View) -->
-              <div class="sub-screen" id="contactActionsView">
-                <div class="module-title-bar" id="actionContactName">Contact Options</div>
-                <div class="module-cards-container single-focus-container" id="contactActionsContainer"></div>
-              </div>
-
-              <!-- Submodule: Favorites List -->
-              <div class="sub-screen" id="favoritesView">
-                <div class="module-title-bar">Favorites</div>
-                <div class="module-cards-container" id="favoritesContainer"></div>
-              </div>
-
-              <!-- Submodule: Recent Calls Log -->
-              <div class="sub-screen" id="recentsView">
-                <div class="module-title-bar">Recent Calls</div>
-                <div class="module-cards-container" id="recentsContainer"></div>
-              </div>
-
-              <!-- Submodule: Handwriting Dialer -->
-              <div class="sub-screen" id="handwritingDialerView"
-                style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 8px 16px 12px; box-sizing: border-box; overflow: hidden; height: 100%;">
-                <!-- Number display + instruction, fixed height at top -->
-                <div class="handwriting-header" style="width: 100%; flex-shrink: 0;">
-                  <div class="handwriting-number-log" id="dialerNumberLog">No number</div>
-                  <div class="handwriting-helper-hint">Draw a digit (0-9) on the screen</div>
-                </div>
-                <!-- Canvas fills remaining space between header and footer hint.
-                     flex: 1 + min-height: 0 is the correct pattern for flex children
-                     that must shrink to fit — avoids overflow into the nav zone. -->
-                <canvas class="handwriting-canvas" id="handwritingCanvas"
-                  style="width: 100%; flex: 1; min-height: 0; border: 2px solid #FFCC00; border-radius: 16px; box-shadow: 0 0 14px rgba(255,204,0,0.3); background: #000; display: block; box-sizing: border-box !important;"></canvas>
-                <!-- Footer hint, aligned standard to match hero card spacing -->
-
-              </div>
+            <div class="screen-view" id="phoneCategoryMenu">
             </div>
 
             <!-- Camera screen -->
-            <div class="screen-view" id="cameraScreen">
+            <div class="screen-view" id="cameraCategoryMenu">
               <!-- Submodule: Camera Menu -->
               <div class="sub-screen active" id="cameraMenuView">
                 <div class="module-title-bar">
@@ -375,7 +303,7 @@
             </div>
 
             <!-- Navigation screen -->
-            <div class="screen-view" id="navigationScreen">
+            <div class="screen-view" id="navCategoryMenu">
               <!-- Submodule: Navigation Menu -->
               <div class="sub-screen active" id="navMenuView">
                 <div class="module-title-bar">
@@ -384,38 +312,26 @@
                 <div class="navigation-card-wrapper" id="navMenuContainer"
                   style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                   <div class="hero-card"
-                    style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000;">
-
-                    <!-- Card Header -->
-                    <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-                      <span style="color: #FFCC00; font-weight: bold;">[ OPTION ]</span>
-                      <span style="color: #FFFFFF; font-weight: bold;">[ 1 / 2 ]</span>
-                    </div>
+                    style="width: 100%; border: 2.5px solid #FFEE55; border-radius: 24px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 28px 20px; background: linear-gradient(150deg, rgba(20, 20, 26, 0.96) 0%, rgba(6, 6, 8, 0.98) 100%); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 204, 0, 0.08); gap: 16px; text-align: center; margin: auto 0;">
 
                     <!-- Card Body -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-                      <div
-                        style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #FFCC00; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-location-dot" style="font-size: 2.2rem; color: #FFCC00;"></i>
-                      </div>
-                      <h2
-                        style="color: #FFCC00; font-size: 2rem; margin: 0; font-weight: 800; text-transform: uppercase;">
-                        ENTER DESTINATION</h2>
-
+                    <div
+                      style="width: 84px; height: 84px; border-radius: 50%; border: 2.5px solid #FFEE55; background: rgba(255, 255, 255, 0.03); box-shadow: 0 0 25px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;">
+                      <i class="fa-solid fa-location-dot" style="font-size: 2.6rem; color: #FFEE55;"></i>
                     </div>
-
-                    <!-- Card Footer -->
-                    <div style="border-top: 1px dashed #444; width: 100%; padding-top: 12px; text-align: center;">
-                      <span style="color: #FFCC00; font-size: 0.85rem;">[ Two-Finger Swipe Down: Quick Access • Long
-                        Press: Back ]</span>
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+                      <h2
+                        style="color: #FFEE55; font-size: 1.55rem; margin: 0; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;">
+                        ENTER DESTINATION</h2>
+                      <div style="font-size: 0.85rem; color: #94A3B8; font-weight: 500; line-height: 1.3;">Speech & Morse GPS guidance</div>
                     </div>
 
                   </div>
 
                   <!-- Indicator Dots -->
-                  <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 12px;">
-                    <span style="width: 24px; height: 8px; background: #FFCC00; border-radius: 4px;"></span>
-                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
+                  <div class="carousel-dots" style="display: flex; gap: 6px; margin-top: 14px; align-items: center; justify-content: center;">
+                    <span style="width: 24px; height: 7px; background: #FFEE55; border-radius: 4px; box-shadow: 0 0 8px #FFEE55;"></span>
+                    <span style="width: 7px; height: 7px; background: #334155; border-radius: 50%;"></span>
                   </div>
                 </div>
               </div>
@@ -430,13 +346,13 @@
                 </div>
               </div>
 
-              <!-- Submodule: Search Results list / Saved Places -->
+              <!-- Nav submodule: results -->
               <div class="sub-screen" id="navResultsView">
                 <div class="module-title-bar" id="navResultsTitle">Saved Places</div>
                 <div class="module-cards-container single-focus-container" id="navResultsContainer"></div>
               </div>
 
-              <!-- Submodule: Selected Destination Actions (Single Focus Card Carousel) -->
+              <!-- Nav submodule: destination actions -->
               <div class="sub-screen" id="navActionsView">
                 <div class="module-title-bar" id="selectedDestName" style="display:none;">Eurofarm Pharmacy</div>
                 <div class="destination-actions-card-wrapper" id="navActionsContainer"
@@ -444,7 +360,7 @@
                 </div>
               </div>
 
-              <!-- Submodule: Active Turn-by-Turn Map View -->
+              <!-- Nav submodule: active turn-by-turn routing -->
               <div class="sub-screen" id="navActiveRoutingView">
                 <div class="active-routing-container">
                   <div class="routing-top-bar">
@@ -463,65 +379,16 @@
               </div>
             </div>
 
-            <!-- Settings screen -->
-            <div class="screen-view" id="settingsScreen">
-              <!-- Submodule: Settings Menu -->
-              <div class="sub-screen active" id="settingsMenuView">
-                <div class="module-title-bar">
-                  <i class="fa-solid fa-sliders"></i> Settings
-                </div>
-                <div class="settings-card-wrapper" id="settingsMenuContainer"
-                  style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <div class="hero-card"
-                    style="width: calc(100% - 32px); flex: 1; max-height: calc(100% - 24px); border: 3px solid #FFCC00; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 22px 18px; background: #000000; overflow: hidden;">
-
-                    <!-- Card Header -->
-                    <div class="card-header"
-                      style="width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;">
-                      <span class="card-header-title"
-                        style="color: #FFCC00; font-weight: bold; font-size: 0.9rem; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">SETTINGS</span>
-                      <span class="card-header-counter"
-                        style="color: #FFFFFF; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">[
-                        1 / 3 ]</span>
-                    </div>
-
-                    <!-- Card Body -->
-                    <div
-                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; margin: auto 0; text-align: center; width: 100%;">
-                      <div class="hero-icon-circle"
-                        style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; border-radius: 50%; border: 3px solid #FFCC00; display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; margin: 0 auto; background: rgba(255, 204, 0, 0.05);">
-                        <i class="fa-solid fa-universal-access"
-                          style="font-size: 2.2rem; color: #FFCC00; line-height: 1; margin: 0; padding: 0;"></i>
-                      </div>
-                      <h2
-                        style="color: #FFCC00; font-size: 1.7rem; margin: 0 auto; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; width: 100%; word-break: break-word;">
-                        ACCESSIBILITY</h2>
-                    </div>
-
-                    <!-- Card Footer -->
-                    <div
-                      style="border-top: 1px dashed #444; width: 100%; padding-top: 10px; text-align: center; flex-shrink: 0;">
-                      <span style="color: #FFCC00; font-size: 0.8rem; font-weight: bold;">[ Two-Finger Swipe Down: Quick
-                        Access • Long Press: Back ]</span>
-                    </div>
-
-                  </div>
-
-                  <!-- Indicator Dots -->
-                  <div class="carousel-dots" style="display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0;">
-                    <span style="width: 24px; height: 8px; background: #FFCC00; border-radius: 4px;"></span>
-                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
-                    <span style="width: 8px; height: 8px; background: #666666; border-radius: 50%;"></span>
-                  </div>
-                </div>
-              </div>
+            <!-- Settings screen — category menu rendered dynamically by settings.js -->
+            <div class="screen-view" id="settingsCategoryMenu">
+              <!-- Submodule: Settings category menu placeholder -->
+              <div class="sub-screen active" id="settingsMenuView"></div>
 
               <!-- Submodule: Accessibility Settings -->
               <div class="sub-screen" id="accessibilitySettingsView">
                 <div class="module-title-bar" style="display:none;">Accessibility</div>
                 <div class="accessibility-card-wrapper" id="accessibilityConfigContainer"
                   style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <!-- Dynamically rendered hero cards -->
                 </div>
               </div>
 
@@ -530,7 +397,6 @@
                 <div class="module-title-bar" style="display:none;">Quick Access</div>
                 <div class="quick-access-card-wrapper" id="quickAccessConfigContainer"
                   style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <!-- Dynamically rendered hero cards -->
                 </div>
               </div>
 
@@ -539,7 +405,6 @@
                 <div class="module-title-bar" style="display:none;">Action Type</div>
                 <div class="quick-action-type-wrapper" id="quickActionTypeContainer"
                   style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <!-- Dynamically rendered action type options -->
                 </div>
               </div>
 
@@ -548,41 +413,50 @@
                 <div class="module-title-bar" style="display:none;">Emergency Contacts</div>
                 <div class="emergency-settings-wrapper" id="emergencySettingsContainer"
                   style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                  <!-- Dynamically rendered emergency contacts -->
                 </div>
               </div>
 
             </div>
 
             <!-- Tutorial Screen -->
-            <div class="screen-view" id="gestureTrainingScreen" style="background: #000000; justify-content: space-between; align-items: center;">
+            <div class="screen-view" id="gestureTrainingScreen"
+              style="background: #000000; width: 100%; height: 100%; box-sizing: border-box; padding: 44px 14px 175px 14px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative;">
               
-              <!-- Premium Card Container (Centered, Auto Height) -->
-              <div class="hero-card" style="width: 100%; border: 1.5px solid rgba(0, 229, 255, 0.25); border-radius: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px; align-items: center; padding: 24px 20px; background: linear-gradient(145deg, #0d0d0d 0%, #030303 100%); box-shadow: 0 10px 30px rgba(0, 229, 255, 0.12); margin: auto 0;">
-                
-                <div class="card-header-line" style="display: flex; justify-content: space-between; width: 100%; flex-shrink: 0;">
-                  <span style="color: #00E5FF; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.5px;">[ GESTURE LESSON ]</span>
-                  <span id="tutStepCounter" style="color: #FFFFFF; font-weight: bold; font-size: 0.9rem;">[ 1 / 6 ]</span>
-                </div>
+              <!-- Screen Top Header Line -->
+              <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 8px; flex-shrink: 0;">
+                <span style="color: #00E5FF; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.5px;">GESTURE LESSON</span>
+                <span id="tutStepCounter" style="color: #00E5FF; font-size: 0.85rem; font-weight: bold; background: #181818; padding: 2px 10px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.4);">
+                  [ 1 / 6 ]
+                </span>
+              </div>
 
-                <div class="tutorial-body" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%;">
-                  <h3 id="tutTitle" style="color: #00E5FF; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.5px; line-height: 1.2;">Locate Navigation Bar</h3>
+              <!-- Premium Card Container (Centered, Auto Height) -->
+              <div class="hero-card"
+                style="width: 100%; border: 2.5px solid #00E5FF; border-radius: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; align-items: center; padding: 28px 20px; background: linear-gradient(150deg, rgba(20, 20, 26, 0.96) 0%, rgba(6, 6, 8, 0.98) 100%); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 229, 255, 0.08); margin: auto 0;">
+                
+                <div class="tutorial-body" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%;">
+                  <div class="tut-animation-container" id="tutAnimationBox" style="width: 84px; height: 84px; border-radius: 50%; border: 2.5px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); box-shadow: 0 0 25px rgba(0,0,0,0.8); margin: 0;">
+                    <i class="fa-solid fa-hand-pointer tut-hand-icon" style="font-size: 2.6rem; color: #00E5FF;"></i>
+                  </div>
                   
-                  <div class="tut-animation-container" id="tutAnimationBox" style="width: 90px; height: 90px; border-radius: 50%; border: 1.5px solid rgba(0, 229, 255, 0.4); display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.03); box-shadow: 0 0 15px rgba(0, 229, 255, 0.15); margin: 6px 0;">
-                    <i class="fa-solid fa-hand-pointer tut-hand-icon" style="font-size: 2.5rem; color: #00E5FF;"></i>
+                  <div>
+                    <h3 id="tutTitle" style="color: #00E5FF; font-size: 1.55rem; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: 1px; line-height: 1.2;">Locate Navigation Bar</h3>
+                    <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: #94A3B8; line-height: 1.3;">Tap bottom zone to practice gestures</p>
                   </div>
                 </div>
 
+                <div style="height: 4px;"></div>
               </div>
 
               <!-- Dot Step Indicators (Sleek Pills) at bottom -->
-              <div class="tutorial-header" id="gestureTrainingHeader" style="display: flex; justify-content: center; gap: 8px; flex-shrink: 0; padding-top: 10px; width: 100%;">
-                <div class="tut-step-dot active" style="width: 24px; height: 8px; border-radius: 4px; background: #00E5FF; box-shadow: 0 0 10px rgba(0, 229, 255, 0.5); transition: all 0.3s;"></div>
-                <div class="tut-step-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #444444; transition: all 0.3s;"></div>
-                <div class="tut-step-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #444444; transition: all 0.3s;"></div>
-                <div class="tut-step-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #444444; transition: all 0.3s;"></div>
-                <div class="tut-step-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #444444; transition: all 0.3s;"></div>
-                <div class="tut-step-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #444444; transition: all 0.3s;"></div>
+              <div class="tutorial-header" id="gestureTrainingHeader"
+                style="position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; flex-shrink: 0; width: 100%; z-index: 90;">
+                <div class="tut-step-dot active" style="width: 24px; height: 7px; border-radius: 4px; background: #00E5FF; box-shadow: 0 0 8px #00E5FF; transition: all 0.3s;"></div>
+                <div class="tut-step-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #334155; transition: all 0.3s;"></div>
+                <div class="tut-step-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #334155; transition: all 0.3s;"></div>
+                <div class="tut-step-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #334155; transition: all 0.3s;"></div>
+                <div class="tut-step-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #334155; transition: all 0.3s;"></div>
+                <div class="tut-step-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #334155; transition: all 0.3s;"></div>
               </div>
 
             </div>
@@ -590,35 +464,33 @@
             <!-- Incoming Call overlay screen -->
             <div id="incomingCallScreen" class="screen-view">
               <div class="hero-card incoming-call-card"
-                style="width: calc(100% - 32px); height: calc(100% - 40px); border: 3px solid #00E5FF; border-radius: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: #000000; margin: 0 auto; box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);">
+                style="width: 100%; border: 2.5px solid #FFEE55; border-radius: 24px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 28px 20px; background: linear-gradient(150deg, rgba(20, 20, 26, 0.96) 0%, rgba(6, 6, 8, 0.98) 100%); margin: auto 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 204, 0, 0.08);">
 
                 <!-- Card Header -->
-                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-                  <span style="color: #00E5FF; font-weight: 800; font-size: 0.9rem; letter-spacing: 1px;">[ INCOMING
-                    CALL ]</span>
-                  <i class="fa-solid fa-phone-incoming pulsing-icon" style="color: #00E5FF; font-size: 1.2rem;"></i>
+                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #222; padding-bottom: 8px;">
+                  <span style="color: #FFEE55; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px;">[ INCOMING CALL ]</span>
+                  <i class="fa-solid fa-phone-incoming pulsing-icon" style="color: #FFEE55; font-size: 1.2rem;"></i>
                 </div>
 
                 <!-- Caller Center Info -->
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 16px 0;">
                   <div class="caller-avatar-circle"
-                    style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #00E5FF; display: flex; align-items: center; justify-content: center; background: rgba(0, 229, 255, 0.1);">
-                    <i class="fa-solid fa-user" style="font-size: 2.8rem; color: #00E5FF;"></i>
+                    style="width: 84px; height: 84px; border-radius: 50%; border: 2.5px solid #FFEE55; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); box-shadow: 0 0 25px rgba(0,0,0,0.8);">
+                    <i class="fa-solid fa-user" style="font-size: 2.6rem; color: #FFEE55;"></i>
                   </div>
                   <div style="text-align: center;">
                     <h2 id="incomingCallerName"
-                      style="color: #FFCC00; font-size: 2.2rem; margin: 0; font-weight: 800; text-transform: uppercase;">
+                      style="color: #FFEE55; font-size: 1.8rem; margin: 0; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px;">
                       Brother</h2>
                     <p id="incomingCallerNumber"
-                      style="color: #FFFFFF; font-size: 1.1rem; font-weight: 600; margin: 8px 0 0 0; font-family: monospace;">
+                      style="color: #FFFFFF; font-size: 1rem; font-weight: 700; margin: 6px 0 0 0; font-family: monospace;">
                       +389 71 987 654</p>
                   </div>
                 </div>
 
                 <!-- Action Hint Footer -->
-                <div style="border-top: 1px dashed #444; width: 100%; padding-top: 14px; text-align: center;">
-                  <span style="color: #00E5FF; font-size: 0.85rem; font-weight: 800;">[ Double Tap: Answer • Long Press:
-                    Decline ]</span>
+                <div style="border-top: 1px dashed #333; width: 100%; padding-top: 12px; text-align: center;">
+                  <span style="color: #94A3B8; font-size: 0.82rem; font-weight: 800;">[ Double Tap: Answer • Long Press: Decline ]</span>
                 </div>
 
               </div>
@@ -628,69 +500,20 @@
             <div class="screen-view" id="activeCallScreen">
               <div class="active-call-container">
                 <div class="caller-photo-avatar">
-                  <i class="fa-solid fa-user"></i>
+                  <i class="fa-solid fa-user-large"></i>
                 </div>
-                <h2 class="caller-name" id="activeCallName">Mother</h2>
-                <div class="call-duration" id="activeCallTimer">00:04</div>
-                <div class="call-status" id="activeCallStatus">Active Call</div>
-                <div class="active-call-actions">
-                  <div class="call-action-row"
-                    style="display: flex; gap: 16px; justify-content: center; margin-bottom: 14px; width: 100%;">
-                    <button class="call-action-btn" id="btnToggleMute"
-                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 72px; height: 72px; border-radius: 50%; border: 2px solid #444; background: #111; color: #CCCCCC; font-size: 0.72rem; font-weight: 700; cursor: pointer; text-transform: uppercase;">
-                      <i class="fa-solid fa-microphone-slash"></i>
-                      <span>Mute</span>
-                    </button>
-                    <button class="call-action-btn" id="btnToggleSpeaker"
-                      style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 72px; height: 72px; border-radius: 50%; border: 2px solid #444; background: #111; color: #CCCCCC; font-size: 0.72rem; font-weight: 700; cursor: pointer; text-transform: uppercase;">
-                      <i class="fa-solid fa-volume-high"></i>
-                      <span>Speaker</span>
-                    </button>
-                  </div>
-                  <button class="end-call-btn" id="btnEndCall">
-                    <i class="fa-solid fa-phone-slash"></i> Double Tap: End Call
-                  </button>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                  <h2 class="caller-name" id="activeCallName">Mother</h2>
+                  <div class="call-duration" id="activeCallTimer">00:00</div>
+                </div>
+                <div class="call-status" id="activeCallStatus">
+                  <span class="call-status-dot"></span> Active Call
                 </div>
               </div>
             </div>
 
-            <!-- SOS Active Overlay -->
-            <div class="screen-view" id="sosScreen">
-              <div class="sos-container">
-                <!-- Phase 1: Countdown UI -->
-                <div id="sosCountdownContainer" class="sos-phase-countdown"
-                  style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%;">
-                  <div class="sos-header">
-                    <div class="sos-icon-ring animate-ping"></div>
-                    <i class="fa-solid fa-triangle-exclamation sos-bell"></i>
-                  </div>
-                  <h1 class="sos-heading">SOS ACTIVE</h1>
-                  <div class="sos-countdown" id="sosCountdownBox">3</div>
-                  <p class="sos-instruction" id="sosInstructionsText">HOLD DOWN SCREEN TO CANCEL</p>
-                </div>
-
-                <!-- Phase 2: Dispatched Card UI (Hidden by default) -->
-                <div class="sos-dispatched-screen" id="sosDispatchedInfo" style="display: none;">
-                  <div class="sos-beacon-card">
-                    <div class="sos-alert-header">
-                      <i class="fa-solid fa-triangle-exclamation"></i>
-                      <span>EMERGENCY ALERT</span>
-                    </div>
-
-                    <h1 class="sos-main-statement">I HAVE A DISABILITY.<br>I NEED HELP.</h1>
-
-                    <p class="sos-sub-statement">Emergency SMS & GPS location dispatched.</p>
-
-                    <div class="sos-contact-box">
-                      <span class="contact-box-label">PLEASE CONTACT EMERGENCY NUMBER:</span>
-                      <h3 id="sosEmergencyContactDisplay" class="contact-box-number">Brother (+389 71 987 654)</h3>
-                    </div>
-
-
-                  </div>
-                </div>
-              </div>
-            </div>
+            <!-- SOS Active Overlay — content rendered dynamically by sos.js -->
+            <div class="screen-view" id="sosScreen"></div>
 
             <!-- Quick Access Swipe Down Overlay -->
             <div class="quick-access-overlay" id="quickAccessOverlay">
@@ -821,6 +644,7 @@
           <div class="log-entry system">[SYSTEM] Audio and speech systems loaded.</div>
         </div>
       </div>
+    </section>
   </main>
 
   <footer class="app-footer-bar">
@@ -835,8 +659,6 @@
     loop></audio>
   <audio id="soundCallConnected" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-84.wav"
     preload="auto"></audio>
-  </div>
-
   <script type="module" src="/src/main.js"></script>
 </body>
 

@@ -42,19 +42,27 @@ export function loadDb() {
     const raw = localStorage.getItem('blindEye_db_v2');
     if (raw) {
       state.db = JSON.parse(raw);
+      if (state.db && state.db.settings && state.db.settings.readingMode === 'combined') {
+        state.db.settings.readingMode = 'voice';
+        saveDb();
+      }
     } else {
       state.db = {
         settings: {
           vibeIntensity: 'medium',
           privacyMode: 'auto',
-          readingMode: 'combined'
+          readingMode: 'voice'
         },
         contacts: [
-          { id: '1', name: 'John Doe', phone: '+1234567890' },
-          { id: '2', name: 'Jane Smith', phone: '+0987654321' }
+          { id: '1', name: 'Brother', phone: '+38971234567' },
+          { id: '2', name: 'Mother', phone: '+38970123456' },
+          { id: '3', name: 'Caregiver Elena', phone: '+38975999888' },
+          { id: '4', name: 'Doctor Office', phone: '+38972555112' }
         ],
         messages: [
-          { id: 'm1', from: 'John Doe', text: 'HELLO WORLD', time: '10:30 AM' }
+          { id: 'm1', from: 'Mother', senderName: 'Mother', text: 'Zdravo, kade si? Dojdi si...', time: '14:25', unread: true },
+          { id: 'm2', from: 'Brother', senderName: 'Brother', text: 'Javi mi se koga mozes.', time: '13:10', unread: false },
+          { id: 'm3', from: 'Caregiver Elena', senderName: 'Caregiver Elena', text: 'Podsetnuvam za lekovite vo 18h.', time: '12:05', unread: true }
         ]
       };
       saveDb();

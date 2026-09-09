@@ -1,7 +1,9 @@
 import { state, logSystem } from './state.js';
 
 const API_BASE = '/api';
-const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + (location.host || 'localhost:3000') + '/ws';
+const WS_BASE = typeof location !== 'undefined'
+  ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + (location.host || 'localhost:3000') + '/ws'
+  : 'ws://localhost:3000/ws';
 
 let socket = null;
 let ruleUpdateListeners = [];
@@ -17,6 +19,20 @@ export function getCacheKey(screenId, gestureCode, subContext = 'DEFAULT') {
 export function resolveLocalCommand(screenId, gestureCode, subContext = 'DEFAULT') {
   const startTime = performance.now();
   
+  // Aliases mapping for seamless screen id resolution
+  const screenAliases = {
+    'messagesScreen': 'messagesView',
+    'messagesView': 'messagesScreen',
+    'callsScreen': 'phoneCategoryMenu',
+    'phoneView': 'phoneCategoryMenu',
+    'cameraCategoryMenu': 'cameraView',
+    'cameraScreen': 'cameraView',
+    'navigationScreen': 'navCategoryMenu',
+    'navigationView': 'navCategoryMenu',
+    'settingsScreen': 'settingsCategoryMenu',
+    'settingsView': 'settingsCategoryMenu'
+  };
+
   // 1. Direct contextual match
   const directKey = getCacheKey(screenId, gestureCode, subContext);
   let cmd = state.commandCache.get(directKey);
@@ -25,6 +41,17 @@ export function resolveLocalCommand(screenId, gestureCode, subContext = 'DEFAULT
   if (!cmd && subContext !== 'DEFAULT') {
     const fallbackKey = getCacheKey(screenId, gestureCode, 'DEFAULT');
     cmd = state.commandCache.get(fallbackKey);
+  }
+
+  // 3. Fallback to Screen Alias if not found directly
+  if (!cmd && screenAliases[screenId]) {
+    const aliasId = screenAliases[screenId];
+    const aliasDirectKey = getCacheKey(aliasId, gestureCode, subContext);
+    cmd = state.commandCache.get(aliasDirectKey);
+    if (!cmd && subContext !== 'DEFAULT') {
+      const aliasFallbackKey = getCacheKey(aliasId, gestureCode, 'DEFAULT');
+      cmd = state.commandCache.get(aliasFallbackKey);
+    }
   }
 
   const latencyMs = (performance.now() - startTime).toFixed(2);
@@ -41,11 +68,12 @@ export function resolveLocalCommand(screenId, gestureCode, subContext = 'DEFAULT
   return {
     success: false,
     latency_ms: parseFloat(latencyMs),
-    message: `No contextual rule found for ${gesture_code} on ${screen_id}`,
+    message: `No contextual rule found for ${gestureCode} on ${screenId}`,
     fallback: { action_type: 'ERROR', haptic_pattern: 'error', tts: 'Action not mapped.' },
     source: 'LOCAL_CACHE'
   };
 }
+
 
 // Populate / sync local command cache
 export async function syncLocalCommandCache() {

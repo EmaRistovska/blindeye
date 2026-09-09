@@ -45,7 +45,7 @@ function startDraw(x, y, ctx) {
   isDrawing = true;
   currentStroke = [{ x, y }];
   ctx.strokeStyle = '#FFEE55';
-  ctx.lineWidth = 10;
+  ctx.lineWidth = 4;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();

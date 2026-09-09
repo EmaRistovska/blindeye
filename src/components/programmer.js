@@ -13,14 +13,25 @@ const ACTIONS = [
   'SEND_MESSAGE',
   'PLAY_MORSE',
   'CALL_CONTACT',
+  'START_CALL',
   'END_CALL',
   'AI_OCR_SCAN',
   'AI_SCENE_DESCRIBE',
-  'TOGGLE_FLASH',
   'START_GPS_GUIDE',
+  'ADVANCE_STEP',
+  'STOP_ROUTE',
   'CYCLE_SETTING',
   'TOGGLE_SETTING',
-  'ADD_QUICK_ACTION',
+  'SET_VIBRATION',
+  'CREATE_QUICK_ACTION',
+  'OPEN_ACTION_MENU',
+  'EXECUTE_ACTION',
+  'TYPE_MORSE_DOT',
+  'COMMIT_MORSE_SPACE',
+  'DELETE_CHAR',
+  'DELETE_DIGIT',
+  'PREPARE_SEND',
+  'PREPARE_CALL',
   'DISPATCH_SOS',
   'CANCEL_SOS',
   'RESTART_TUTORIAL'
@@ -171,6 +182,28 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
               </label>
             </div>
 
+            <!-- Target Screen & Haptic Feedback Selectors -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+              <label style="font-size: 0.72rem; color: #CBD5E1; font-weight: bold;">
+                TARGET SCREEN (IF NAVIGATE)
+                <select id="${key('targetScreen')}" style="width: 100%; margin-top: 4px; padding: 8px; background: #111827; color: #38BDF8; border: 1.5px solid #334155; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+                  <option value="">— None / Same Screen —</option>
+                </select>
+              </label>
+
+              <label style="font-size: 0.72rem; color: #CBD5E1; font-weight: bold;">
+                HAPTIC PATTERN
+                <select id="${key('haptic')}" style="width: 100%; margin-top: 4px; padding: 8px; background: #111827; color: #10B981; border: 1.5px solid #334155; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+                  <option value="short">Short Pulse</option>
+                  <option value="success">Success (Double)</option>
+                  <option value="warning">Warning Pulse</option>
+                  <option value="error">Error Pulse</option>
+                  <option value="long">Long Hold</option>
+                  <option value="sos">Emergency SOS</option>
+                </select>
+              </label>
+            </div>
+
             <!-- Custom Action & Spoken TTS Input -->
             <label style="display: block; margin-top: 10px; font-size: 0.72rem; color: #CBD5E1; font-weight: bold;">
               SPOKEN TTS PROMPT / SPEECH OUTPUT
@@ -185,6 +218,7 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
                 Cancel
               </button>
             </div>
+
           </div>
 
           <!-- Master Saved Rules Registry -->
@@ -209,6 +243,26 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
         </section>
 
       </div>
+
+      <!-- ==========================================
+           SECTION 4: NAVIGATION FLOW MAP
+           ========================================== -->
+      <div style="margin-top: 16px; padding: 14px; border: 1.5px solid #A855F7; border-radius: 14px; background: #0D0B1A;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #334155; padding-bottom: 8px; margin-bottom: 12px;">
+          <div>
+            <strong style="color: #A855F7; font-size: 0.95rem;">4. NAVIGATION FLOW MAP</strong>
+            <p style="margin: 3px 0 0 0; color: #94A3B8; font-size: 0.72rem;">All screen-to-screen transitions derived from NAVIGATE rules. Shows gesture → target for every screen.</p>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <span style="font-size: 0.65rem; color: #A855F7; background: rgba(168,85,247,0.12); border: 1px solid #A855F7; padding: 2px 8px; border-radius: 10px; font-weight: bold;">
+              <i class="fa-solid fa-diagram-project"></i> LIVE FROM DB
+            </span>
+            <input id="${key('flowFilter')}" placeholder="Filter by screen name..." style="padding: 5px 10px; background: #111827; color: #FFFFFF; border: 1px solid #334155; border-radius: 6px; font-size: 0.75rem; width: 180px;">
+          </div>
+        </div>
+        <div id="${key('flowMap')}" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 420px; overflow-y: auto; padding: 4px;"></div>
+      </div>
+
     </div>
   `;
 
@@ -373,6 +427,12 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
     // Screen dropdown in scenario builder
     el('screen').innerHTML = data.screens.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
+    // Target screen dropdown in scenario builder
+    const targetSelect = el('targetScreen');
+    if (targetSelect) {
+      targetSelect.innerHTML = '<option value="">— None / Same Screen —</option>' + data.screens.map(s => `<option value="${s.id}">${s.name} (${s.id})</option>`).join('');
+    }
+
     // Zone dropdown in scenario builder
     const availableSections = data.sections.length
       ? data.sections.map(s => `<option value="${s.id}">${s.name} (${s.screen_id || 'GLOBAL'})</option>`).join('')
@@ -404,6 +464,7 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
       const payload = parsePayload(rule);
       const zoneName = data.sections.find(s => s.id === rule.sub_context)?.name || rule.sub_context || 'Full Screen';
       const screenName = data.screens.find(s => s.id === rule.screen_id)?.name || rule.screen_id;
+      const targetStr = payload?.target || payload?.screen_id || payload?.target_screen || '';
 
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px; border: 1px solid #334155; border-radius: 8px; background: #111827; font-size: 0.75rem;">
@@ -415,6 +476,7 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
             <span style="color: #FFEE55; font-weight: bold;">${rule.gesture_code}</span>
             <span style="color: #94A3B8;">→</span>
             <span style="color: #10B981; font-weight: bold;">${rule.action_type}</span>
+            ${targetStr ? `<span style="color: #38BDF8; font-size: 0.68rem;">➔ [${targetStr}]</span>` : ''}
             <div style="color: #CBD5E1; font-style: italic; font-size: 0.7rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               "${payload?.tts || 'No prompt'}"
             </div>
@@ -434,29 +496,48 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
     // Bind rule action buttons
     rulesList.querySelectorAll('[data-edit-rule]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const rule = data.rules.find(r => r.id === btn.dataset.editRule);
-        if (!rule) return;
-        const payload = parsePayload(rule);
-        data.edit = rule.id;
-        data.selected = rule.sub_context;
-        updateDropdowns();
-        el('screen').value = rule.screen_id;
-        el('section').value = rule.sub_context;
-        el('gesture').value = rule.gesture_code;
-        el('action').value = ACTIONS.includes(rule.action_type) ? rule.action_type : 'TRIGGER_TTS';
-        el('tts').value = payload?.tts || '';
-        el('mode').innerText = `Editing rule (${rule.id})`;
-        el('cancel').style.display = 'block';
-        renderCanvas();
+        startEditingRule(btn.dataset.editRule);
       });
     });
 
     rulesList.querySelectorAll('[data-del-rule]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        await deleteProgrammerCommand(btn.dataset.delRule);
-        notify('Rule deleted.');
+        await deleteRule(btn.dataset.delRule);
       });
     });
+  };
+
+  const startEditingRule = (ruleId) => {
+    const rule = data.rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    const payload = parsePayload(rule);
+    data.edit = rule.id;
+    data.selected = rule.sub_context;
+    data.activeScreenFilter = rule.screen_id;
+    updateDropdowns();
+    if (el('screen')) el('screen').value = rule.screen_id;
+    if (el('zoneScreenFilter')) el('zoneScreenFilter').value = rule.screen_id;
+    if (el('section')) el('section').value = rule.sub_context;
+    if (el('gesture')) el('gesture').value = rule.gesture_code;
+    if (el('action')) el('action').value = ACTIONS.includes(rule.action_type) ? rule.action_type : 'TRIGGER_TTS';
+    if (el('targetScreen')) el('targetScreen').value = payload?.target || payload?.screen_id || payload?.target_screen || '';
+    if (el('haptic')) el('haptic').value = rule.haptic_pattern || 'short';
+    if (el('tts')) el('tts').value = payload?.tts || '';
+    if (el('mode')) el('mode').innerText = `Editing rule (${rule.id})`;
+    if (el('cancel')) el('cancel').style.display = 'block';
+    renderCanvas();
+
+    const scroller = document.getElementById(containerId);
+    if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+    notify(`Loaded rule ${rule.id} into editor.`);
+  };
+
+  const deleteRule = async (ruleId) => {
+    if (confirm(`Delete rule "${ruleId}"?`)) {
+      await deleteProgrammerCommand(ruleId);
+      notify(`Deleted rule ${ruleId}.`);
+      await loadAll();
+    }
   };
 
   const loadAll = async () => {
@@ -477,6 +558,141 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
     updateDropdowns();
     renderCanvas();
     renderRules();
+    renderFlowMap();
+  };
+
+  // ====================================================
+  // NAVIGATION FLOW MAP RENDERER
+  // ====================================================
+  const renderFlowMap = () => {
+    const container = el('flowMap');
+    if (!container) return;
+
+    const filter = (el('flowFilter')?.value || '').toLowerCase();
+
+    // Build lookup: screen_id -> screen name
+    const screenNames = {};
+    data.screens.forEach(s => { screenNames[s.id] = s.name; });
+
+    // Gesture labels & color
+    const gestureStyle = {
+      'SWIPE_RIGHT':  { label: '→ Swipe Right',  color: '#00E5FF' },
+      'SWIPE_LEFT':   { label: '← Swipe Left',   color: '#00E5FF' },
+      'SWIPE_UP':     { label: '↑ Swipe Up',      color: '#FFEE55' },
+      'SWIPE_DOWN':   { label: '↓ Swipe Down',    color: '#94A3B8' },
+      'DOUBLE_TAP':   { label: '⊙ Double Tap',    color: '#10B981' },
+      'LONG_PRESS':   { label: '⏱ Long Press',    color: '#F97316' },
+      'TAP':          { label: '• Tap',            color: '#CBD5E1' },
+      'TWO_FINGER_TAP': { label: '✌ 2-Finger Tap', color: '#A855F7' },
+    };
+
+    // Group navigate rules by source screen
+    const flowGroups = {};
+    data.rules.forEach(rule => {
+      const payload = parsePayload(rule);
+      const target = payload?.target_screen || payload?.target || '';
+      // Only include rules that navigate to another named screen
+      if (!target || target === rule.screen_id) return;
+
+      if (!flowGroups[rule.screen_id]) flowGroups[rule.screen_id] = [];
+      flowGroups[rule.screen_id].push({
+        gesture: rule.gesture_code,
+        action: rule.action_type,
+        target,
+        tts: payload?.tts || '',
+        ruleId: rule.id
+      });
+    });
+
+    const screenIds = Object.keys(flowGroups);
+    if (screenIds.length === 0) {
+      container.innerHTML = '<span style="font-size: 0.78rem; color: #64748B;">No NAVIGATE rules with a target_screen found. Add a rule with NAVIGATE action and set a target screen.</span>';
+      return;
+    }
+
+    const filteredIds = screenIds.filter(id => {
+      if (!filter) return true;
+      const name = (screenNames[id] || id).toLowerCase();
+      return name.includes(filter) || id.toLowerCase().includes(filter);
+    });
+
+    if (filteredIds.length === 0) {
+      container.innerHTML = `<span style="font-size: 0.78rem; color: #64748B;">No screens match "${el('flowFilter')?.value || ''}".</span>`;
+      return;
+    }
+
+    container.innerHTML = filteredIds.map(screenId => {
+      const transitions = flowGroups[screenId];
+      const sourceName = screenNames[screenId] || screenId;
+
+      const rows = transitions.map(t => {
+        const gs = gestureStyle[t.gesture] || { label: t.gesture, color: '#94A3B8' };
+        const targetName = screenNames[t.target] || t.target;
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 0; border-bottom: 1px dashed #1E293B; font-size: 0.72rem;">
+            <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden;">
+              <span style="background: rgba(0,0,0,0.4); border: 1px solid ${gs.color}; color: ${gs.color}; padding: 2px 7px; border-radius: 10px; font-weight: 900; white-space: nowrap; font-size: 0.68rem; flex-shrink: 0;">${gs.label}</span>
+              <span style="color: #94A3B8; font-size: 0.85rem; flex-shrink: 0;">→</span>
+              <span style="background: rgba(168,85,247,0.12); border: 1px solid #A855F7; color: #D8B4FE; padding: 2px 8px; border-radius: 10px; font-weight: bold; white-space: nowrap; font-size: 0.68rem; flex-shrink: 0;">${targetName}</span>
+              <span style="color: #475569; font-size: 0.62rem; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${t.tts}">"${t.tts ? (t.tts.slice(0, 36) + (t.tts.length > 36 ? '…' : '')) : ''}"</span>
+            </div>
+            <div style="display: flex; gap: 4px; flex-shrink: 0; margin-left: 4px;">
+              <button data-flow-edit="${t.ruleId}" style="padding: 2px 6px; background: #0E7490; color: #FFF; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px;" title="Edit command in Scenario Builder">
+                <i class="fa-solid fa-pen-to-square"></i> Edit
+              </button>
+              <button data-flow-del="${t.ruleId}" style="padding: 2px 6px; background: #7F1D1D; color: #FFF; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.65rem; display: inline-flex; align-items: center; gap: 3px;" title="Delete this command">
+                <i class="fa-solid fa-trash"></i> Del
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="flow-node" data-screen="${screenId}" style="flex: 0 1 380px; min-width: 300px; border: 1.5px solid #334155; border-radius: 10px; background: #0B1220; padding: 10px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; transition: border-color 0.15s;" onmouseover="this.style.borderColor='#A855F7'" onmouseout="this.style.borderColor='#334155'">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #00E5FF; display: inline-block;"></span>
+              <strong style="color: #00E5FF; font-size: 0.82rem;">${sourceName}</strong>
+            </div>
+            <span style="font-size: 0.62rem; color: #475569; background: #111827; padding: 1px 6px; border-radius: 6px;">${transitions.length} transition${transitions.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div style="color: #64748B; font-size: 0.62rem; margin-bottom: 4px; font-family: monospace;">${screenId}</div>
+          ${rows}
+        </div>
+      `;
+    }).join('');
+
+    // Bind click on flow nodes to jump to that screen in the Scenario Builder
+    container.querySelectorAll('.flow-node').forEach(node => {
+      node.addEventListener('click', event => {
+        if (event.target.closest('button')) return;
+        const screenId = node.dataset.screen;
+        const screenSelect = el('screen');
+        if (screenSelect) {
+          screenSelect.value = screenId;
+          screenSelect.dispatchEvent(new Event('change'));
+          // Scroll to the top of the programmer section
+          const scroller = document.getElementById(containerId);
+          if (scroller) scroller.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Flow Map Edit & Delete buttons
+    container.querySelectorAll('[data-flow-edit]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        startEditingRule(btn.dataset.flowEdit);
+      });
+    });
+
+    container.querySelectorAll('[data-flow-del]').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await deleteRule(btn.dataset.flowDel);
+      });
+    });
   };
 
   const resetBuilder = () => {
@@ -620,6 +836,9 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
     renderCanvas();
   });
 
+  // Flow Map Filter Input
+  el('flowFilter')?.addEventListener('input', () => renderFlowMap());
+
   // Scenario Builder Screen Change
   el('screen').addEventListener('change', e => {
     const screenId = e.target.value;
@@ -641,6 +860,8 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
     const screenId = el('screen').value;
     const gesture = el('gesture').value;
     const action = el('action').value;
+    const targetScreen = el('targetScreen')?.value || '';
+    const hapticPattern = el('haptic')?.value || (action === 'DISPATCH_SOS' ? 'sos_pulse' : 'short');
     const ttsText = el('tts').value.trim() || `${action} triggered on ${section}.`;
 
     const commandData = {
@@ -649,8 +870,8 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
       gesture_code: gesture,
       sub_context: section || 'DEFAULT',
       action_type: action,
-      action_payload: { tts: ttsText, target: section },
-      haptic_pattern: action === 'DISPATCH_SOS' ? 'sos' : 'success',
+      action_payload: { tts: ttsText, target: targetScreen || section },
+      haptic_pattern: hapticPattern,
       created_by: 'AI_PROGRAMMER_WORKBENCH'
     };
 
@@ -665,6 +886,7 @@ export function renderProgrammerScreen(containerId = 'programmerScreen') {
       notify(result.error || 'Failed to save scenario.');
     }
   });
+
 
   el('cancel').addEventListener('click', resetBuilder);
 

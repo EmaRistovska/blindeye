@@ -4,10 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --names \"API,UI\" --prefix-colors \"cyan,yellow\" \"node server/index.js\" \"vite\"",
+    "vite": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server/index.js"
+    "server": "node server/index.js",
+    "import-commands": "node server/import_commands.js",
+    "export-commands": "node C:\\Users\\filip\\.gemini\\antigravity-ide\\brain\\382cbf9f-55c9-4080-8d17-b1db7230bf2d\\scratch\\export_commands_file.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
@@ -16,6 +19,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "vite": "^5.4.0"
   },
   "allowScripts": {

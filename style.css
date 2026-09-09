@@ -215,6 +215,25 @@ body.landing-mode .phone-column {
   }
 }
 
+.full-view-pane {
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 75px);
+  background: #07090E;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.nav-tab-btn {
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.nav-tab-btn:hover {
+  filter: brightness(1.25);
+  transform: translateY(-1px);
+}
+
 /* Layout container */
 .simulator-container {
   flex: 1;
@@ -407,16 +426,18 @@ body.landing-mode .phone-column {
   height: 100%;
   display: none;
   flex-direction: column;
-  padding: 30px 18px 180px 18px;
-  /* Bottom padding leaves space for swipe navigation zone & fingerprint sensor */
+  padding: 0;
+  margin: 0;
   position: relative;
   box-sizing: border-box;
-  animation: screenFadeIn 0.3s ease-out;
+  overflow: hidden;
+  animation: screenFadeIn 0.2s ease-out;
 }
 
 .screen-view.active {
   display: flex;
 }
+
 
 @keyframes screenFadeIn {
   from {
@@ -2272,67 +2293,95 @@ body.landing-mode .phone-column {
 /* Active Call Layout */
 .active-call-container {
   flex: 1;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 24px;
+  padding: 32px 20px;
+  box-sizing: border-box;
+  text-align: center;
+  user-select: none;
 }
 
 .caller-photo-avatar {
-  width: 120px;
-  height: 120px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid var(--panel-border);
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(255, 238, 85, 0.15) 0%, rgba(0, 0, 0, 0.4) 70%);
+  border: 3px solid #FFEE55;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3.5rem;
-  color: var(--accent-cyan);
+  font-size: 3.8rem;
+  color: #FFEE55;
+  box-shadow: 0 0 35px rgba(255, 238, 85, 0.3), inset 0 0 20px rgba(255, 238, 85, 0.1);
+  animation: callAvatarPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes callAvatarPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(255, 238, 85, 0.25);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 45px rgba(255, 238, 85, 0.45);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(255, 238, 85, 0.25);
+  }
 }
 
 .caller-name {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  letter-spacing: 0.5px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .call-duration {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 1.4rem;
-  color: var(--text-secondary);
+  font-size: 1.5rem;
+  color: #FFEE55;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-top: 4px;
 }
 
 .call-status {
-  font-size: 0.85rem;
-  background-color: rgba(16, 185, 129, 0.15);
-  border: 1px solid var(--accent-success);
-  color: var(--accent-success);
-  padding: 4px 12px;
-  border-radius: 99px;
-  font-weight: 600;
-}
-
-.active-call-actions {
-  width: 100%;
-  margin-top: 1rem;
-}
-
-.end-call-btn {
-  width: 100%;
-  padding: 15px;
-  border-radius: 16px;
-  border: none;
-  background-color: var(--accent-danger);
-  color: white;
-  font-weight: 700;
-  font-size: 1rem;
-  box-shadow: 0 4px 15px var(--accent-danger-glow);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
+  gap: 8px;
+  font-size: 0.85rem;
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10B981;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.call-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+  display: inline-block;
+  animation: callDotPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes callDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 /* SOS Screen Design */
@@ -3974,37 +4023,125 @@ body.landing-mode .phone-column {
 
 /* Config cards wrapper for onboarding */
 #onboardingConfigContainer {
-  position: relative !important;
   width: 100% !important;
   height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
   padding: 0 !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
 }
 
-#onboardingConfigContainer .hero-card {
-  position: absolute !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  margin: auto !important;
-  width: calc(100% - 32px) !important;
-  height: calc(100% - 64px) !important;
-  box-sizing: border-box !important;
+/* ============================================================
+   GESTURE ENGINE & TOUCH-ACTION PRESERVATION
+============================================================ */
+.phone-screen,
+.screen-view,
+.main-category-card,
+.phone-cat-card,
+.cam-cat-card,
+.nav-cat-card,
+.settings-cat-card {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
-#onboardingConfigContainer .carousel-dots {
-  position: absolute !important;
-  bottom: 8px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: 10 !important;
-  display: flex !important;
-  gap: 8px !important;
-  margin-top: 0 !important;
+#btnMenuPrev:hover,
+#btnMenuNext:hover,
+#btnPhonePrev:hover,
+#btnPhoneNext:hover,
+#btnCamPrev:hover,
+#btnCamNext:hover,
+#btnNavPrev:hover,
+#btnNavNext:hover,
+#btnSettingsPrev:hover,
+#btnSettingsNext:hover {
+  background: rgba(0, 229, 255, 0.18) !important;
+  border-color: #00E5FF !important;
+  color: #00E5FF !important;
+  transform: scale(1.05);
 }
+
+#btnMenuPrev:active,
+#btnMenuNext:active,
+#btnPhonePrev:active,
+#btnPhoneNext:active,
+#btnCamPrev:active,
+#btnCamNext:active,
+#btnNavPrev:active,
+#btnNavNext:active,
+#btnSettingsPrev:active,
+#btnSettingsNext:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   BLINDEYE WELCOME SCREEN & LOGO ANIMATIONS
+============================================================ */
+@keyframes blindEyePulse {
+  0% {
+    transform: scale(0.98);
+    box-shadow: 0 0 25px rgba(255, 238, 85, 0.4), inset 0 0 15px rgba(255, 238, 85, 0.2);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 45px rgba(255, 238, 85, 0.85), inset 0 0 25px rgba(255, 183, 3, 0.5);
+  }
+  100% {
+    transform: scale(0.98);
+    box-shadow: 0 0 25px rgba(255, 238, 85, 0.4), inset 0 0 15px rgba(255, 238, 85, 0.2);
+  }
+}
+
+@keyframes blindEyeGlowText {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(255, 238, 85, 0.65));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(255, 183, 3, 0.85));
+  }
+}
+
+@keyframes orbitRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes floatElement {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ============================================================
+   REALISTIC CAMERA VIEWFINDER & HUD
+============================================================ */
+@keyframes simCamScan {
+  0% {
+    top: 6%;
+    opacity: 0.3;
+  }
+  50% {
+    top: 88%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.3;
+  }
+}
+
+.sim-cam-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: currentColor;
+  border-style: solid;
+  pointer-events: none;
+  z-index: 5;
+}
+.sim-cam-corner.tl { top: 8px; left: 8px; border-width: 2.5px 0 0 2.5px; }
+.sim-cam-corner.tr { top: 8px; right: 8px; border-width: 2.5px 2.5px 0 0; }
+.sim-cam-corner.bl { bottom: 8px; left: 8px; border-width: 0 0 2.5px 2.5px; }
+.sim-cam-corner.br { bottom: 8px; right: 8px; border-width: 0 2.5px 2.5px 0; }
+
+

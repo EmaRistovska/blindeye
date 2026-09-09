@@ -1,0 +1,1820 @@
+{
+  "success": true,
+  "count": 134,
+  "commands": [
+    {
+      "id": "cmd_call1",
+      "screen_id": "activeCallScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "END_CALL",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Call ended. Returned to phone menu."
+      },
+      "haptic_pattern": "error",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_call3",
+      "screen_id": "activeCallScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "END_CALL",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Call ended. Returned to phone menu."
+      },
+      "haptic_pattern": "error",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camh1",
+      "screen_id": "cameraActiveHoldScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "AI_OCR_SCAN",
+      "action_payload": {
+        "target": "cameraResultScreen",
+        "tts": "Capturing photo and scanning text with AI vision..."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camh3",
+      "screen_id": "cameraActiveHoldScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "cameraCategoryMenu",
+        "tts": "Returned to Camera Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cameraCategoryMenu_1",
+      "screen_id": "cameraCategoryMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Scan Objects. Hold camera for 3s to describe scene and obstacles. Double tap to start."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cameraCategoryMenu_2",
+      "screen_id": "cameraCategoryMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Read Text OCR. Hold camera for 3s to read printed text. Double tap to start."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cameraCategoryMenu_3",
+      "screen_id": "cameraCategoryMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "cameraActiveHoldScreen",
+        "tts": "Starting camera. Hold steady for 3 seconds to capture."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cameraCategoryMenu_5",
+      "screen_id": "cameraCategoryMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Returning to Main Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camr1",
+      "screen_id": "cameraResultScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "cameraActiveHoldScreen",
+        "tts": "Retaking photo. Hold camera steady."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camr2",
+      "screen_id": "cameraResultScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "DEFAULT",
+      "action_type": "TRIGGER_TTS",
+      "action_payload": {
+        "tts": "Replaying recognized text."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camr3",
+      "screen_id": "cameraResultScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "DEFAULT",
+      "action_type": "PLAY_MORSE",
+      "action_payload": {
+        "tts": "Playing Morse vibration sequence."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_camr5",
+      "screen_id": "cameraResultScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "cameraCategoryMenu",
+        "tts": "Returned to Camera Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_1786973103174",
+      "screen_id": "contactActionMenuScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "tts": "Executing contact action.",
+        "target": "zone_bottom_navigation_bar_global"
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-08-19 12:16:08"
+    },
+    {
+      "id": "cmd_1786974391700",
+      "screen_id": "contactActionMenuScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next contact action.",
+        "target": "zone_bottom_navigation_bar_global"
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-08-19 12:16:08"
+    },
+    {
+      "id": "cmd_1786974408840",
+      "screen_id": "contactActionMenuScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous contact action.",
+        "target": "zone_bottom_navigation_bar_global"
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-08-19 12:16:08"
+    },
+    {
+      "id": "cmd_cact5",
+      "screen_id": "contactActionMenuScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "contactsListScreen",
+        "tts": "Cancelled. Returned to contacts directory."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_cntsave_space",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "COMMIT_MORSE_SPACE",
+      "action_payload": {
+        "tts": "Space added."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave1",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "TYPE_MORSE_DOT",
+      "action_payload": {
+        "tts": "Dot"
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave2",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "LONG_PRESS",
+      "sub_context": "DEFAULT",
+      "action_type": "TYPE_MORSE_DASH",
+      "action_payload": {
+        "tts": "Dash"
+      },
+      "haptic_pattern": "long",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave3",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "DELETE_CHAR",
+      "action_payload": {
+        "tts": "Deleted character."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave4",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "SWIPE_UP",
+      "sub_context": "DEFAULT",
+      "action_type": "READ_DRAFT",
+      "action_payload": {
+        "tts": "Draft name confirmation."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave5",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SAVE_CONTACT",
+      "action_payload": {
+        "target": "contactsListScreen",
+        "tts": "Contact saved."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cntsave6",
+      "screen_id": "contactSaveNameInputScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "dialerActionMenuScreen",
+        "tts": "Cancelled saving contact."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cnt1",
+      "screen_id": "contactsListScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Doctor Office. Phone: +389 72 555 112. Double tap for action menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cnt2",
+      "screen_id": "contactsListScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Mother. Phone: +389 70 123 456. Double tap for action menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cnt3",
+      "screen_id": "contactsListScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "contactActionMenuScreen",
+        "tts": "Opening contact actions menu."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_cnt5",
+      "screen_id": "contactsListScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlract1",
+      "screen_id": "dialerActionMenuScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next dialer action."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlract2",
+      "screen_id": "dialerActionMenuScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous dialer action."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlract3",
+      "screen_id": "dialerActionMenuScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "EXECUTE_ACTION",
+      "action_payload": {
+        "tts": "Executing dialer action."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlract5",
+      "screen_id": "dialerActionMenuScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "handwritingDialerScreen",
+        "tts": "Returned to dialer."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_1786973210760",
+      "screen_id": "dialerCallConfirmScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "tts": "Calling number now.",
+        "target": "zone_bottom_navigation_bar_global"
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-08-19 12:16:08"
+    },
+    {
+      "id": "cmd_emg1",
+      "screen_id": "emergencyContactsListScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Emergency service: 112 Police & Ambulance. Double tap to call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_emg2",
+      "screen_id": "emergencyContactsListScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Emergency contact: Mother. Phone: +389 70 123 456. Double tap to call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_emg3",
+      "screen_id": "emergencyContactsListScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "target": "activeCallScreen",
+        "tts": "Speed dial: Calling Mother immediately."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_emg5",
+      "screen_id": "emergencyContactsListScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_fav1",
+      "screen_id": "favoritesListScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Favorite contact: Caregiver Elena. Phone: +389 75 999 888. Double tap to call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_fav2",
+      "screen_id": "favoritesListScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Favorite contact: Mother. Phone: +389 70 123 456. Double tap to call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_fav3",
+      "screen_id": "favoritesListScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "target": "activeCallScreen",
+        "tts": "Calling Mother now."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_fav5",
+      "screen_id": "favoritesListScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_tut_long_press_exit",
+      "screen_id": "gestureTrainingScreen",
+      "gesture_code": "LONG_PRESS",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Exited tutorial. Returned to Welcome screen."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_tut_swipe_down_exit",
+      "screen_id": "gestureTrainingScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Exited tutorial. Returned to Welcome screen."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_tut_tap_confirm",
+      "screen_id": "gestureTrainingScreen",
+      "gesture_code": "TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CONFIRM_STEP",
+      "action_payload": {
+        "tts": "Step confirmed."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_dlr1",
+      "screen_id": "handwritingDialerScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "DELETE_DIGIT",
+      "action_payload": {
+        "tts": "Deleted last dialed digit."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlr2",
+      "screen_id": "handwritingDialerScreen",
+      "gesture_code": "SWIPE_UP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "dialerActionMenuScreen",
+        "tts": "Number ready. Opening action menu: Call number or save to contacts."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_dlr3",
+      "screen_id": "handwritingDialerScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "tts": "Action menu: Call number or save to contacts.",
+        "target": "dialerActionMenuScreen"
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-09-07 10:23:07"
+    },
+    {
+      "id": "cmd_dlr5",
+      "screen_id": "handwritingDialerScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_land1",
+      "screen_id": "landingScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Entering Welcome screen."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_land2",
+      "screen_id": "landingScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Entering Welcome screen."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_land3",
+      "screen_id": "landingScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "onboardingAuthScreen",
+        "tts": "Opening Biometric Device Login."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_m1",
+      "screen_id": "mainMenuScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Phone and Contacts. Call favorites and dial numbers. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_m2",
+      "screen_id": "mainMenuScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Settings. Reading mode, haptics and privacy. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_m3",
+      "screen_id": "mainMenuScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "messagesScreen",
+        "tts": "Opening Messages."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_m4",
+      "screen_id": "mainMenuScreen",
+      "gesture_code": "LONG_PRESS",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Returning to Welcome screen."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_m5",
+      "screen_id": "mainMenuScreen",
+      "gesture_code": "TWO_FINGER_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "TRIGGER_TTS",
+      "action_payload": {
+        "tts": "Status check: Time is 12:00, Battery 85%, Connection is stable."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_messagesScreen_1",
+      "screen_id": "messagesScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next message from Doctor Office: Your prescription is ready for pickup."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_messagesScreen_2",
+      "screen_id": "messagesScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous message from Mother: Where are you? When are you coming home?"
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_messagesScreen_3",
+      "screen_id": "messagesScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "READ_MESSAGE",
+      "action_payload": {
+        "target": "msgPrivacyReaderReplyScreen",
+        "tts": "Opening Private Message Reader."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_messagesScreen_5",
+      "screen_id": "messagesScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Returning to Main Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp_send",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SEND_MESSAGE",
+      "action_payload": {
+        "target": "messagesScreen",
+        "tts": "Reply message sent successfully. Returning to messages list."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp1",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "DEFAULT",
+      "action_type": "COMMIT_MORSE_SPACE",
+      "action_payload": {
+        "tts": "Space"
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp2",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "DEFAULT",
+      "action_type": "DELETE_CHAR",
+      "action_payload": {
+        "tts": "Delete character"
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp3",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "SWIPE_UP",
+      "sub_context": "DEFAULT",
+      "action_type": "READ_DRAFT",
+      "action_payload": {
+        "tts": "Draft message: I will be home in 10 minutes. Double tap bottom navigation bar to send."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp5",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "messagesScreen",
+        "tts": "Exited privacy screen. Returned to message list."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_msgp7",
+      "screen_id": "msgPrivacyReaderReplyScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "TYPE_MORSE_DOT",
+      "action_payload": {
+        "tts": "Dot."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_navrt1",
+      "screen_id": "navActiveRouteScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "DEFAULT",
+      "action_type": "ADVANCE_STEP",
+      "action_payload": {
+        "tts": "Next navigation step."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navrt2",
+      "screen_id": "navActiveRouteScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "ADVANCE_STEP",
+      "action_payload": {
+        "tts": "Step confirmed. Continuing route."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navrt4",
+      "screen_id": "navActiveRouteScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "STOP_ROUTE",
+      "action_payload": {
+        "target": "navPlaceActionMenuScreen",
+        "tts": "Navigation route stopped. Returned to place options."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navCategoryMenu_1",
+      "screen_id": "navCategoryMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Saved Places. Quick access saved destinations. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navCategoryMenu_2",
+      "screen_id": "navCategoryMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Navigate to Place. Enter or speak a destination. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navCategoryMenu_3",
+      "screen_id": "navCategoryMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "navSearchInputScreen",
+        "tts": "Opening Place Finder."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navCategoryMenu_5",
+      "screen_id": "navCategoryMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Returning to Main Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navp1",
+      "screen_id": "navPlaceActionMenuScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next place action: Call Place, Start GPS Guide, or Share Location."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navp2",
+      "screen_id": "navPlaceActionMenuScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous place action."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navp3",
+      "screen_id": "navPlaceActionMenuScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "START_GPS_GUIDE",
+      "action_payload": {
+        "target": "navActiveRouteScreen",
+        "tts": "GPS navigation started. In 25 meters, turn right."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navp5",
+      "screen_id": "navPlaceActionMenuScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "savedPlacesListScreen",
+        "tts": "Cancelled. Returned to saved places."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc1",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "TAP",
+      "sub_context": "zone_main_viewport_content",
+      "action_type": "TYPE_MORSE_DOT",
+      "action_payload": {
+        "tts": "Dot."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc2_lp",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "LONG_PRESS",
+      "sub_context": "DEFAULT",
+      "action_type": "TYPE_MORSE_DASH",
+      "action_payload": {
+        "tts": "Dash."
+      },
+      "haptic_pattern": "long",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc3",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "DELETE_CHAR",
+      "action_payload": {
+        "tts": "Deleted last character."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc4",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "SWIPE_UP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "navPlaceActionMenuScreen",
+        "tts": "Destination confirmed. Opening place options."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc5",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "navPlaceActionMenuScreen",
+        "tts": "Destination confirmed. Opening place options."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc6",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "navPlaceActionMenuScreen",
+        "tts": "Opening place options."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navsrc7",
+      "screen_id": "navSearchInputScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "navCategoryMenu",
+        "tts": "Returned to Navigation Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_onb_cfg_back",
+      "screen_id": "onboardingConfigScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "welcomeScreen",
+        "tts": "Returned to Welcome Screen."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_onb_cfg_next",
+      "screen_id": "onboardingConfigScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next configuration option."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_onb_cfg_prev",
+      "screen_id": "onboardingConfigScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous configuration option."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_onb_cfg_select",
+      "screen_id": "onboardingConfigScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Configuration saved. Entering Main Menu."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_phoneCategoryMenu_1",
+      "screen_id": "phoneCategoryMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Favorites. Quick access favorite contacts. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_phoneCategoryMenu_2",
+      "screen_id": "phoneCategoryMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Handwriting Dialer. Draw numbers on screen to call. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_phoneCategoryMenu_3",
+      "screen_id": "phoneCategoryMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "contactsListScreen",
+        "tts": "Opening Contacts Directory."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_phoneCategoryMenu_5",
+      "screen_id": "phoneCategoryMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Returning to Main Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_recentCallsScreen_call",
+      "screen_id": "recentCallsScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "target": "activeCallScreen",
+        "tts": "Calling contact now."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_recentCallsScreen_down",
+      "screen_id": "recentCallsScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_recentCallsScreen_next",
+      "screen_id": "recentCallsScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next recent call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_recentCallsScreen_prev",
+      "screen_id": "recentCallsScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous recent call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-08-20 12:46:21"
+    },
+    {
+      "id": "cmd_rec1",
+      "screen_id": "recentsListScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next recent call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_rec2",
+      "screen_id": "recentsListScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous recent call."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_rec3",
+      "screen_id": "recentsListScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "target": "activeCallScreen",
+        "tts": "Calling contact now."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_rec5",
+      "screen_id": "recentsListScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "phoneCategoryMenu",
+        "tts": "Returned to Phone Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navs1",
+      "screen_id": "savedPlacesListScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Doctor Office: Mother Teresa Clinic Center. 1.2 km away. Double tap for actions."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navs2",
+      "screen_id": "savedPlacesListScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Home: Partizanska 45. 450m away. Double tap for actions."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navs3",
+      "screen_id": "savedPlacesListScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "navPlaceActionMenuScreen",
+        "tts": "Opening place actions menu."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_navs5",
+      "screen_id": "savedPlacesListScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "navCategoryMenu",
+        "tts": "Returned to Navigation Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_1786965716000",
+      "screen_id": "settingsAccessibilityMenu",
+      "gesture_code": "TWO_FINGER_TAP",
+      "sub_context": "zone_top_status_bar_global",
+      "action_type": "TRIGGER_TTS",
+      "action_payload": {
+        "tts": "Main Menu. Time is 13:24. Battery is 100%.",
+        "target": "zone_top_status_bar_global"
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER_WORKBENCH",
+      "updated_at": "2026-08-19 12:16:08"
+    },
+    {
+      "id": "cmd_seta1",
+      "screen_id": "settingsAccessibilityMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next preference: Morse Code Speed (Slow, Medium, Fast) or Vibration Intensity."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_seta2",
+      "screen_id": "settingsAccessibilityMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous preference: Reading Mode (TTS Only or Morse Only)."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_seta3",
+      "screen_id": "settingsAccessibilityMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CYCLE_SETTING",
+      "action_payload": {
+        "tts": "Setting value changed."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_seta5",
+      "screen_id": "settingsAccessibilityMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsCategoryMenu",
+        "tts": "Returned to Settings Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setaddq_back",
+      "screen_id": "settingsAddQuickActionScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsQuickAccessScreen",
+        "tts": "Cancelled. Returned to Quick Access list."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setaddq_dblTap",
+      "screen_id": "settingsAddQuickActionScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "settingsPickTargetScreen",
+        "tts": "Selected action type. Choose target."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setaddq_next",
+      "screen_id": "settingsAddQuickActionScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next action type."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setaddq_prev",
+      "screen_id": "settingsAddQuickActionScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous action type."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_settingsCategoryMenu_1",
+      "screen_id": "settingsCategoryMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Accessibility Preferences. Customize reading modes, high contrast, and haptic feedback. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_settingsCategoryMenu_2",
+      "screen_id": "settingsCategoryMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Tutorial Mode. Replay gestures and system guide. Double tap to open."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_settingsCategoryMenu_3",
+      "screen_id": "settingsCategoryMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "SELECT_ITEM",
+      "action_payload": {
+        "target": "settingsAccessibilityMenu",
+        "tts": "Opening Accessibility Preferences."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_settingsCategoryMenu_5",
+      "screen_id": "settingsCategoryMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Returning to Main Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_setpick_back",
+      "screen_id": "settingsPickTargetScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsAddQuickActionScreen",
+        "tts": "Cancelled. Returned to action types."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setpick_dblTap",
+      "screen_id": "settingsPickTargetScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "CREATE_QUICK_ACTION",
+      "action_payload": {
+        "target": "settingsQuickAccessScreen",
+        "tts": "Quick action created successfully."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setpick_next",
+      "screen_id": "settingsPickTargetScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Next target."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setpick_prev",
+      "screen_id": "settingsPickTargetScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Previous target."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setq1",
+      "screen_id": "settingsQuickAccessScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Quick Action 2 of 4: Route to Home. Status: Enabled."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setq2",
+      "screen_id": "settingsQuickAccessScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Quick Action 1 of 4: Speed Dial Mother. Status: Enabled."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setq3",
+      "screen_id": "settingsQuickAccessScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "TOGGLE_SETTING",
+      "action_payload": {
+        "tts": "Quick action status toggled."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setq4",
+      "screen_id": "settingsQuickAccessScreen",
+      "gesture_code": "SWIPE_UP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsAddQuickActionScreen",
+        "tts": "Add new quick action. Choose action type."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_setq6",
+      "screen_id": "settingsQuickAccessScreen",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsCategoryMenu",
+        "tts": "Returned to Settings Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_sett_next",
+      "screen_id": "settingsTutorialMenu",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_NEXT",
+      "action_payload": {
+        "tts": "Tutorial Mode. Double tap to restart orientation."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_sett_prev",
+      "screen_id": "settingsTutorialMenu",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "zone_bottom_navigation_bar_global",
+      "action_type": "NAVIGATE_PREV",
+      "action_payload": {
+        "tts": "Tutorial Mode. Double tap to restart orientation."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-09 18:44:52"
+    },
+    {
+      "id": "cmd_sett1",
+      "screen_id": "settingsTutorialMenu",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "RESTART_TUTORIAL",
+      "action_payload": {
+        "target": "tutorialScreen",
+        "tts": "Restarting tutorial. Letter calibration started."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_sett3",
+      "screen_id": "settingsTutorialMenu",
+      "gesture_code": "SWIPE_DOWN",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "settingsCategoryMenu",
+        "tts": "Returned to Settings Menu."
+      },
+      "haptic_pattern": "short",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_sos1",
+      "screen_id": "sosScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "CALL_CONTACT",
+      "action_payload": {
+        "target": "activeCallScreen",
+        "tts": "Emergency calling Mother on +389 70 123 456."
+      },
+      "haptic_pattern": "sos",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_sos2",
+      "screen_id": "sosScreen",
+      "gesture_code": "LONG_PRESS",
+      "sub_context": "DEFAULT",
+      "action_type": "CANCEL_SOS",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "SOS emergency countdown cancelled. Returning to safety."
+      },
+      "haptic_pattern": "warning",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:32"
+    },
+    {
+      "id": "cmd_w1",
+      "screen_id": "welcomeScreen",
+      "gesture_code": "SWIPE_RIGHT",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Entering Main Menu. Messages focused."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_w2",
+      "screen_id": "welcomeScreen",
+      "gesture_code": "DOUBLE_TAP",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "mainMenuScreen",
+        "tts": "Entering Main Menu. Messages focused."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    },
+    {
+      "id": "cmd_w3",
+      "screen_id": "welcomeScreen",
+      "gesture_code": "SWIPE_LEFT",
+      "sub_context": "DEFAULT",
+      "action_type": "NAVIGATE",
+      "action_payload": {
+        "target": "gestureTrainingScreen",
+        "tts": "Welcome to the gesture tutorial. Starting gesture training and orientation."
+      },
+      "haptic_pattern": "success",
+      "created_by": "AI_PROGRAMMER",
+      "updated_at": "2026-09-07 09:48:31"
+    }
+  ]
+}

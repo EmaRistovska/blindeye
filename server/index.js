@@ -91,7 +91,7 @@ app.get('/api/sections', (req, res) => {
     const { screen_id } = req.query;
     let sections;
     if (screen_id && screen_id !== 'ALL') {
-      sections = db.prepare('SELECT * FROM interface_sections WHERE screen_id = ? OR screen_id = "GLOBAL" ORDER BY name ASC').all(screen_id);
+      sections = db.prepare(`SELECT * FROM interface_sections WHERE screen_id = ? OR screen_id = 'GLOBAL' ORDER BY name ASC`).all(screen_id);
     } else {
       sections = db.prepare('SELECT * FROM interface_sections ORDER BY name ASC').all();
     }

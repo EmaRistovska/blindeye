@@ -1317,63 +1317,58 @@ function recognizeHeuristicLetter(normPts, ar, startP, endP) {
   const startX = normPts[0].x;
   const startY = normPts[0].y;
   const endX = normPts[n - 1].x;
-  const endY = normPts[n - 1].y;
-
-  let yExtrema = [];
-  for (let i = 2; i < n - 2; i++) {
-    const prevDy = normPts[i].y - normPts[i - 2].y;
-    const nextDy = normPts[i + 2].y - normPts[i].y;
-    if (prevDy < -0.05 && nextDy > 0.05) {
-      yExtrema.push({ type: 'peak', x: normPts[i].x, y: normPts[i].y, idx: i });
-    } else if (prevDy > 0.05 && nextDy < -0.05) {
-      yExtrema.push({ type: 'valley', x: normPts[i].x, y: normPts[i].y, idx: i });
+function pointCloudDistance(ptsA, ptsB) {
+  if (!ptsA || !ptsB || ptsA.length === 0 || ptsB.length === 0) return Infinity;
+  let distAtoB = 0;
+  for (let i = 0; i < ptsA.length; i++) {
+    let minDist = Infinity;
+    const pa = ptsA[i];
+    for (let j = 0; j < ptsB.length; j++) {
+      const pb = ptsB[j];
+      const d = (pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2;
+      if (d < minDist) minDist = d;
     }
+    distAtoB += Math.sqrt(minDist);
   }
 
-  let xExtrema = [];
-  for (let i = 2; i < n - 2; i++) {
-    const prevDx = normPts[i].x - normPts[i - 2].x;
-    const nextDx = normPts[i + 2].x - normPts[i].x;
-    if (prevDx < -0.05 && nextDx > 0.05) {
-      xExtrema.push({ type: 'leftmost', x: normPts[i].x, y: normPts[i].y });
-    } else if (prevDx > 0.05 && nextDx < -0.05) {
-      xExtrema.push({ type: 'rightmost', x: normPts[i].x, y: normPts[i].y });
+  let distBtoA = 0;
+  for (let j = 0; j < ptsB.length; j++) {
+    let minDist = Infinity;
+    const pb = ptsB[j];
+    for (let i = 0; i < ptsA.length; i++) {
+      const pa = ptsA[i];
+      const d = (pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2;
+      if (d < minDist) minDist = d;
     }
+    distBtoA += Math.sqrt(minDist);
   }
 
-  const topPeaks = yExtrema.filter(e => e.type === 'peak' || e.y < 0.45);
-
-  if (topPeaks.length >= 2 || (startY > 0.5 && endY > 0.5 && yExtrema.length >= 2)) {
-    return 'M';
-  }
-
-  if ((startY > 0.5 && endY < 0.5) || (topPeaks.length === 1 && endY < 0.5)) {
-    return 'N';
-  }
-
-  if (startY > 0.5 && endY < 0.75 && endX < 0.6 && startX < 0.5) {
-    return 'P';
-  }
-
-  if (xExtrema.length >= 2 || (startX > 0.4 && endX < 0.6 && yExtrema.length >= 2)) {
-    return 'S';
-  } else if (startX > 0.3 && endX > 0.3 && (xExtrema.length <= 1)) {
-    return 'C';
-  }
-
-  if (startY > 0.5 && endY > 0.5) return 'M';
-  if (startY > 0.5 && endY < 0.5) return 'N';
-  if (startX > 0.4 && endX > 0.4) return 'C';
-  if (startX > 0.4 && endX < 0.5) return 'S';
-
-  // Bug fix #1: Return null for genuinely unrecognized strokes instead of defaulting
-  // to 'P'. The caller (handleMainMenuHandwriting) handles null by playing an error haptic
-  // and speaking "Letter not recognized" — much better than silently opening Phone.
-  return null;
+  return (distAtoB / ptsA.length + distBtoA / ptsB.length) / 2;
 }
 
+const APP_CANONICAL_CLOUDS = {
+  'M': [
+    resamplePoints([{ x: 0.05, y: 0.95 }, { x: 0.1, y: 0.5 }, { x: 0.15, y: 0.05 }, { x: 0.32, y: 0.4 }, { x: 0.5, y: 0.75 }, { x: 0.68, y: 0.4 }, { x: 0.85, y: 0.05 }, { x: 0.9, y: 0.5 }, { x: 0.95, y: 0.95 }], 36),
+    resamplePoints([{ x: 0.05, y: 0.95 }, { x: 0.05, y: 0.4 }, { x: 0.25, y: 0.05 }, { x: 0.5, y: 0.65 }, { x: 0.75, y: 0.05 }, { x: 0.95, y: 0.4 }, { x: 0.95, y: 0.95 }], 36)
+  ],
+  'P': [
+    resamplePoints([{ x: 0.15, y: 0.95 }, { x: 0.15, y: 0.5 }, { x: 0.15, y: 0.05 }, { x: 0.5, y: 0.05 }, { x: 0.85, y: 0.12 }, { x: 0.92, y: 0.28 }, { x: 0.85, y: 0.45 }, { x: 0.5, y: 0.5 }, { x: 0.15, y: 0.5 }], 36),
+    resamplePoints([{ x: 0.15, y: 0.05 }, { x: 0.15, y: 0.95 }, { x: 0.15, y: 0.35 }, { x: 0.55, y: 0.35 }, { x: 0.9, y: 0.5 }, { x: 0.55, y: 0.68 }, { x: 0.15, y: 0.68 }], 36)
+  ],
+  'C': [
+    resamplePoints([{ x: 0.9, y: 0.15 }, { x: 0.6, y: 0.03 }, { x: 0.2, y: 0.15 }, { x: 0.05, y: 0.4 }, { x: 0.05, y: 0.6 }, { x: 0.2, y: 0.85 }, { x: 0.6, y: 0.97 }, { x: 0.9, y: 0.85 }], 36)
+  ],
+  'N': [
+    resamplePoints([{ x: 0.1, y: 0.95 }, { x: 0.1, y: 0.5 }, { x: 0.1, y: 0.05 }, { x: 0.5, y: 0.5 }, { x: 0.9, y: 0.95 }, { x: 0.9, y: 0.5 }, { x: 0.9, y: 0.05 }], 36),
+    resamplePoints([{ x: 0.05, y: 0.95 }, { x: 0.05, y: 0.25 }, { x: 0.5, y: 0.05 }, { x: 0.95, y: 0.25 }, { x: 0.95, y: 0.95 }], 36)
+  ],
+  'S': [
+    resamplePoints([{ x: 0.85, y: 0.12 }, { x: 0.5, y: 0.03 }, { x: 0.12, y: 0.22 }, { x: 0.5, y: 0.5 }, { x: 0.88, y: 0.75 }, { x: 0.5, y: 0.97 }, { x: 0.15, y: 0.88 }], 36)
+  ]
+};
+
 function recognizeMainMenuLetter(pts) {
-  if (!pts || pts.length < 5) return null;
+  if (!pts || pts.length < 4) return null;
 
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   pts.forEach(p => {
@@ -1385,32 +1380,29 @@ function recognizeMainMenuLetter(pts) {
 
   const w = maxX - minX;
   const h = maxY - minY;
-  const ar = h / (w || 1);
+  if (w < 10 && h < 10) return null;
 
   const normPts = pts.map(p => ({
     x: (p.x - minX) / (w || 1),
     y: (p.y - minY) / (h || 1)
   }));
 
-  if (state.db.letterProfiles && Object.keys(state.db.letterProfiles).length > 0) {
-    let bestLetter = null;
-    let bestScore = Infinity;
+  const sample = resamplePoints(normPts, 36);
 
-    for (const [letter, profile] of Object.entries(state.db.letterProfiles)) {
-      if (!profile || !profile.resampledPts) continue;
-      const score = compareStrokeToProfile(normPts, ar, profile);
-      if (score < bestScore) {
-        bestScore = score;
+  let bestLetter = null;
+  let lowestDist = Infinity;
+
+  for (const [letter, list] of Object.entries(APP_CANONICAL_CLOUDS)) {
+    for (const cloud of list) {
+      const d = pointCloudDistance(sample, cloud);
+      if (d < lowestDist) {
+        lowestDist = d;
         bestLetter = letter;
       }
     }
-
-    if (bestLetter && bestScore < 1.8) {
-      return bestLetter;
-    }
   }
 
-  return recognizeHeuristicLetter(normPts, ar, pts[0], pts[pts.length - 1]);
+  return bestLetter;
 }
 
 function handleMainMenuHandwriting(pts) {
@@ -5892,7 +5884,7 @@ function handleOnboardingGesture(gesture, x, y) {
         const announceStatus = (batteryStr) => {
           Speech.speak(`Correct! Two-finger tap checks status. Time is ${timeStr}. Battery is ${batteryStr}. Connection is stable. Now, let's set up permissions.`, true, advanceOnboarding);
         };
-        
+
         let announceBatteryStr = '85 percent';
         if ('getBattery' in navigator) {
           navigator.getBattery().then(battery => {
